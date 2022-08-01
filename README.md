@@ -7,4 +7,4 @@ just for study ffmpeg, base5.0.1
 
 [Android FFmpeg系列02--音视频基础](https://mp.weixin.qq.com/s?__biz=MzI4MTQxOTAyNQ==&mid=2247485365&idx=1&sn=28703662ff99cc317acf04c93281eb0c&chksm=eba8cbcbdcdf42ddf088e023ba37573370bb51535842b68bcaeda29203760aee05189c3528c3&scene=178&cur_album_id=2458430746399703041#rd)
 
-[Android FFmpeg系列03--视频解码与渲染]()
+[Android FFmpeg系列03--视频解码与渲染](https://mp.weixin.qq.com/s?__biz=MzI4MTQxOTAyNQ==&mid=2247485611&idx=1&sn=418c0e0c4d3e9549573b466d73f85e38&chksm=eba8c4d5dcdf4dc3634cce34c08b23e69462e5722bebd5e75448230fc6b44d9362a43b46fc38&scene=178&cur_album_id=2458430746399703041#rd)
