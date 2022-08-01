@@ -129,7 +129,6 @@ void FFMpegPlayer::doRender(JNIEnv *env, AVFrame *avFrame) {
     auto v = env->NewByteArray(ySize / 4);
     env->SetByteArrayRegion(v, 0, ySize / 4, reinterpret_cast<const jbyte *>(avFrame->data[2]));
 
-    sync(avFrame);
     env->CallVoidMethod(jPlayerListenerObj, onFrameArrived,
                         avFrame->width, avFrame->height, y, u, v);
 
