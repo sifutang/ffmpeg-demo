@@ -65,24 +65,21 @@ void FFMpegPlayer::start(JNIEnv *env) {
         if (ret != 0) {
             LOGE("read packet...end")
             av_packet_free(&avPacket);
-            av_free(avPacket);
-            avPacket = nullptr;
+            av_freep(&avPacket);
             break;
         }
 
         if (avPacket->stream_index != mVideoDecoder->getStreamIndex()) {
             LOGI("read packet...other")
             av_packet_free(&avPacket);
-            av_free(avPacket);
-            avPacket = nullptr;
+            av_freep(&avPacket);
             continue;
         }
 
         mVideoDecoder->decode(avPacket);
 
         av_packet_free(&avPacket);
-        av_free(avPacket);
-        avPacket = nullptr;
+        av_freep(&avPacket);
     }
 
     mIsRunning = false;
@@ -114,13 +111,18 @@ void FFMpegPlayer::sync(AVFrame *avFrame) {
         elapsedTime = av_gettime() - mStartTime;
     }
     int64_t diff = pts - elapsedTime;
-    LOGI("video frame arrived, pts: %lld, elapsedTime: %lld, diff: %lld", pts, elapsedTime, diff)
+    LOGI("video frame arrived, pts: %" PRId64 ", elapsedTime: %" PRId64 " diff: %" PRId64, pts, elapsedTime, diff)
     if (diff > 0) {
         av_usleep(diff);
     }
 }
 
 void FFMpegPlayer::doRender(JNIEnv *env, AVFrame *avFrame) {
+    if (!avFrame->data[0] || !avFrame->data[1] || !avFrame->data[2]) {
+        LOGE("doRender failed, no buffer")
+        return;
+    }
+
     int ySize = avFrame->width * avFrame->height;
     auto y = env->NewByteArray(ySize);
     env->SetByteArrayRegion(y, 0, ySize, reinterpret_cast<const jbyte *>(avFrame->data[0]));

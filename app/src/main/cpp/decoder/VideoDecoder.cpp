@@ -58,8 +58,7 @@ int VideoDecoder::decode(AVPacket *avPacket) {
     if (res != 0) {
         LOGE("avcodec_receive_frame err: %d", res)
         av_frame_free(&avFrame);
-        av_free(avFrame);
-        avFrame = nullptr;
+        av_freep(&avFrame);
         return res;
     }
 
@@ -105,8 +104,7 @@ int VideoDecoder::decode(AVPacket *avPacket) {
 
     // release frame
     av_frame_free(&avFrame);
-    av_free(avFrame);
-    avFrame = nullptr;
+    av_freep(&avFrame);
 
     return res;
 }
