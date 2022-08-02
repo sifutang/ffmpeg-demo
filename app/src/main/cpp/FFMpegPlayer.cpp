@@ -59,28 +59,26 @@ bool FFMpegPlayer::prepare(JNIEnv *env, std::string &path) {
 }
 
 void FFMpegPlayer::start(JNIEnv *env) {
+    AVPacket *avPacket = av_packet_alloc();
     while (mIsRunning && mVideoDecoder) {
-        AVPacket *avPacket = av_packet_alloc();
         int ret = av_read_frame(mFtx, avPacket);
         if (ret != 0) {
             LOGE("read packet...end")
-            av_packet_free(&avPacket);
-            av_freep(&avPacket);
+            av_packet_unref(avPacket);
             break;
         }
 
         if (avPacket->stream_index != mVideoDecoder->getStreamIndex()) {
             LOGI("read packet...other")
-            av_packet_free(&avPacket);
-            av_freep(&avPacket);
+            av_packet_unref(avPacket);
             continue;
         }
 
         mVideoDecoder->decode(avPacket);
-
-        av_packet_free(&avPacket);
-        av_freep(&avPacket);
+        av_packet_unref(avPacket);
     }
+    av_packet_free(&avPacket);
+    av_freep(&avPacket);
 
     mIsRunning = false;
     LOGI("decode...end")
