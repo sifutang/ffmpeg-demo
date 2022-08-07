@@ -86,7 +86,7 @@ typedef struct AVD3D11VADeviceContext {
      * access to hwcontext or decoder state in general.
      *
      * If unset on init, the hwcontext implementation will set them to use an
-     * internal mMutex.
+     * internal mutex.
      *
      * The underlying lock must be recursive. lock_ctx is for free use by the
      * locking implementation.

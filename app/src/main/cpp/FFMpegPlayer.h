@@ -15,6 +15,7 @@ extern "C" {
 #include "libavutil/time.h"
 #include "libavformat/avformat.h"
 #include "libavcodec/avcodec.h"
+#include "libavcodec/jni.h"
 }
 
 class FFMpegPlayer {
@@ -25,15 +26,13 @@ public:
 
     ~FFMpegPlayer();
 
-    bool prepare(JNIEnv *env, std::string &path);
+    bool prepare(JNIEnv *env, std::string &path, jobject surface);
 
     void start(JNIEnv *env);
 
     void stop();
 
     void registerPlayerListener(JNIEnv *env, jobject listener);
-
-    void release();
 
 private:
     jmethodID onCallPrepared = nullptr;
