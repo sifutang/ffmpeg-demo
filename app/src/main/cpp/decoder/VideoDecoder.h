@@ -8,6 +8,7 @@
 extern "C" {
 #include "libavformat/avformat.h"
 #include "libavcodec/avcodec.h"
+#include "libavcodec/mediacodec.h"
 #include "libswscale/swscale.h"
 #include "libavutil/imgutils.h"
 }
@@ -26,7 +27,7 @@ public:
 
     double getDuration() const;
 
-    bool prepare(AVCodecParameters *codecParameters);
+    bool prepare(AVCodecParameters *codecParameters, jobject surface);
 
     int decode(AVPacket *packet);
 
@@ -42,13 +43,21 @@ private:
 
     int mVideoIndex = -1;
 
-    double mDuration = 0;
+    int64_t mDuration = 0;
+
+    bool mUseHwEncode = true;
 
     AVFormatContext *mFtx = nullptr;
+
+    AVBufferRef *mHwDeviceCtx = nullptr;
 
     const AVCodec *mVideoCodec = nullptr;
 
     AVCodecContext *mVideoCodecContext = nullptr;
+
+    AVMediaCodecContext *mMediaCodecContext = nullptr;
+
+    AVFrame *mAvFrame = nullptr;
 
     SwsContext *mSwsContext = nullptr;
 

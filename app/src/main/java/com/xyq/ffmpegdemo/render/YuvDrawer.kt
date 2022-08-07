@@ -1,9 +1,9 @@
 package com.xyq.ffmpegdemo.render
 
-import android.graphics.SurfaceTexture
 import android.opengl.GLES20
 import android.opengl.Matrix
 import android.util.Log
+import com.xyq.ffmpegdemo.utils.OpenGLTools
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.nio.FloatBuffer
@@ -27,8 +27,6 @@ class YuvDrawer: IDrawer {
         0f, 0f,
         1f, 0f
     )
-
-    private var mSurfaceTexture: SurfaceTexture? = null
 
     private var mWorldWidth = -1
     private var mWorldHeight = -1
@@ -75,18 +73,22 @@ class YuvDrawer: IDrawer {
         mTextureBuffer.position(0)
     }
 
-    override fun getTextureSize(): Int {
-        return 3;
+    private fun getTextureSize(): Int {
+        return mYuvTextures.size
     }
 
-    override fun setTextures(ids: IntArray) {
-        mYuvTextures = ids;
-        for (texture in mYuvTextures) {
-            GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, texture)
-            GLES20.glTexParameterf(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_LINEAR.toFloat())
-            GLES20.glTexParameterf(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_LINEAR.toFloat())
-            GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_S, GLES20.GL_CLAMP_TO_EDGE)
-            GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_T, GLES20.GL_CLAMP_TO_EDGE)
+    private var mInitRunnable: Runnable? = null
+    override fun init() {
+        mInitRunnable = Runnable {
+            val size = getTextureSize()
+            mYuvTextures = OpenGLTools.createTextureIds(size)
+            for (texture in mYuvTextures) {
+                GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, texture)
+                GLES20.glTexParameterf(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_LINEAR.toFloat())
+                GLES20.glTexParameterf(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_LINEAR.toFloat())
+                GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_S, GLES20.GL_CLAMP_TO_EDGE)
+                GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_T, GLES20.GL_CLAMP_TO_EDGE)
+            }
         }
     }
 
@@ -103,10 +105,12 @@ class YuvDrawer: IDrawer {
     }
 
     override fun draw() {
+        if (mYuvTextures[0] == -1) {
+            mInitRunnable?.run()
+        }
         if (mYuvTextures[0] != -1) {
             initDefMatrix()
             createGLProgram()
-            updateTexture()
             synchronized(this) {
                 doDraw()
             }
@@ -141,7 +145,7 @@ class YuvDrawer: IDrawer {
     }
 
     private var mFilterProgress = 0f
-    fun setFilterProgress(value: Float) {
+    override fun setFilterProgress(value: Float) {
         mFilterProgress = value
         Log.i(TAG, "setFilterProgress: $value")
     }
@@ -197,10 +201,6 @@ class YuvDrawer: IDrawer {
         GLES20.glUseProgram(mProgram)
     }
 
-    private fun updateTexture() {
-        mSurfaceTexture?.updateTexImage()
-    }
-
     private fun getVertexShader(): String {
         return "attribute vec4 aPosition;" +
                 "uniform mat4 uMatrix;" +
@@ -225,8 +225,8 @@ class YuvDrawer: IDrawer {
                 "void main() {" +
                 "    float y,u,v;" +
                 "    y = texture2D(samplerY, vCoordinate).r;" +
-                "    u = texture2D(samplerU, vCoordinate).r- 0.5;" +
-                "    v = texture2D(samplerV, vCoordinate).r- 0.5;" +
+                "    u = texture2D(samplerU, vCoordinate).r - 0.5;" +
+                "    v = texture2D(samplerV, vCoordinate).r - 0.5;" +
                 "    vec3 rgb;" +
                 "    rgb.r = y + 1.403 * v;" +
                 "    rgb.g = y - 0.344 * u - 0.714 * v;" +

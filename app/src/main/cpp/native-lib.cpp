@@ -20,13 +20,13 @@ Java_com_xyq_ffmpegdemo_player_FFPlayer_nativeInit(JNIEnv *env, jobject thiz) {
 extern "C"
 JNIEXPORT jboolean JNICALL
 Java_com_xyq_ffmpegdemo_player_FFPlayer_nativePrepare(JNIEnv *env, jobject thiz, jlong handle,
-                                                      jstring path) {
+                                                      jstring path, jobject surface) {
     auto *player = reinterpret_cast<FFMpegPlayer *>(handle);
     const char *c_path = env->GetStringUTFChars(path, nullptr);
     std::string s_path = c_path;
     bool result = false;
     if (player) {
-        result = player->prepare(env,s_path);
+        result = player->prepare(env,s_path, surface);
     }
     if (c_path != nullptr) {
         env->ReleaseStringUTFChars(path, c_path);

@@ -1,9 +1,11 @@
 package com.xyq.ffmpegdemo.utils
 
+import android.content.Context
 import android.util.Log
 import java.io.File
 import java.io.FileOutputStream
 import java.io.InputStream
+import java.lang.StringBuilder
 
 object FileUtils {
 
@@ -30,5 +32,23 @@ object FileUtils {
         } else {
             Log.w(TAG, "copyFile2Path: $path file exists")
         }
+    }
+
+    fun read(assetFileName: String, context: Context): ByteArray {
+        val inputStream = context.assets.open(assetFileName)
+        val length = inputStream.available()
+        val buffer = ByteArray(length)
+        inputStream.read(buffer)
+        return buffer
+    }
+
+    fun readTextFileFromResource(context:Context, resId:Int): String {
+        val inputStream = context.resources.openRawResource(resId)
+        val result = StringBuilder()
+        inputStream.bufferedReader().useLines { lines -> lines.forEach {
+            result.append(it)
+            result.append("\n")
+        } }
+        return result.toString()
     }
 }

@@ -9,12 +9,17 @@ FFMpegPlayer::FFMpegPlayer() {
 FFMpegPlayer::~FFMpegPlayer() {
     pthread_mutex_destroy(&mMutex);
     pthread_cond_destroy(&mCond);
-
-    release();
     LOGI("~FFMpegPlayer")
 }
 
-bool FFMpegPlayer::prepare(JNIEnv *env, std::string &path) {
+bool FFMpegPlayer::prepare(JNIEnv *env, std::string &path, jobject surface) {
+    // step0: register jvm to ffmpeg for mediacodec decoding
+    JavaVM *javaVm = nullptr;
+    env->GetJavaVM(&javaVm);
+    if (javaVm != nullptr) {
+        av_jni_set_java_vm(javaVm, nullptr);
+    }
+
     // step1: alloc format context
     mFtx = avformat_alloc_context();
 
@@ -51,7 +56,7 @@ bool FFMpegPlayer::prepare(JNIEnv *env, std::string &path) {
         doRender(env, frame);
     });
 
-    bool prepared = mVideoDecoder->prepare(mFtx->streams[videoIndex]->codecpar);
+    bool prepared = mVideoDecoder->prepare(mFtx->streams[videoIndex]->codecpar, surface);
     mIsRunning = prepared;
 
     env->CallVoidMethod(jPlayerListenerObj, onCallPrepared, mVideoDecoder->getWidth(), mVideoDecoder->getHeight());
@@ -80,14 +85,17 @@ void FFMpegPlayer::start(JNIEnv *env) {
     av_packet_free(&avPacket);
     av_freep(&avPacket);
 
-    mIsRunning = false;
-    LOGI("decode...end")
+    if (mIsRunning) {
+        LOGI("decode...end")
+        env->CallVoidMethod(jPlayerListenerObj, onCallCompleted);
+        mIsRunning = false;
+    } else {
+        LOGI("decode...abort")
+    }
 
     pthread_mutex_lock(&mMutex);
     pthread_cond_signal(&mCond);
     pthread_mutex_unlock(&mMutex);
-
-    env->CallVoidMethod(jPlayerListenerObj, onCallCompleted);
 }
 
 void FFMpegPlayer::sync(AVFrame *avFrame) {
@@ -116,25 +124,46 @@ void FFMpegPlayer::sync(AVFrame *avFrame) {
 }
 
 void FFMpegPlayer::doRender(JNIEnv *env, AVFrame *avFrame) {
-    if (!avFrame->data[0] || !avFrame->data[1] || !avFrame->data[2]) {
-        LOGE("doRender failed, no buffer")
-        return;
+    if (avFrame->format == AV_PIX_FMT_YUV420P) {
+        if (!avFrame->data[0] || !avFrame->data[1] || !avFrame->data[2]) {
+            LOGE("doRender failed, no yuv buffer")
+            return;
+        }
+
+        int ySize = avFrame->width * avFrame->height;
+        auto y = env->NewByteArray(ySize);
+        env->SetByteArrayRegion(y, 0, ySize, reinterpret_cast<const jbyte *>(avFrame->data[0]));
+        auto u = env->NewByteArray(ySize / 4);
+        env->SetByteArrayRegion(u, 0, ySize / 4, reinterpret_cast<const jbyte *>(avFrame->data[1]));
+        auto v = env->NewByteArray(ySize / 4);
+        env->SetByteArrayRegion(v, 0, ySize / 4, reinterpret_cast<const jbyte *>(avFrame->data[2]));
+
+        env->CallVoidMethod(jPlayerListenerObj, onFrameArrived,
+                            avFrame->width, avFrame->height, y, u, v);
+
+        env->DeleteLocalRef(y);
+        env->DeleteLocalRef(u);
+        env->DeleteLocalRef(v);
+    } else if (avFrame->format == AV_PIX_FMT_NV12) {
+        if (!avFrame->data[0] || !avFrame->data[1]) {
+            LOGE("doRender failed, no nv21 buffer")
+            return;
+        }
+
+        int ySize = avFrame->width * avFrame->height;
+        auto y = env->NewByteArray(ySize);
+        env->SetByteArrayRegion(y, 0, ySize, reinterpret_cast<const jbyte *>(avFrame->data[0]));
+        auto uv = env->NewByteArray(ySize / 2);
+        env->SetByteArrayRegion(uv, 0, ySize / 2, reinterpret_cast<const jbyte *>(avFrame->data[1]));
+
+        env->CallVoidMethod(jPlayerListenerObj, onFrameArrived,
+                            avFrame->width, avFrame->height, y, uv, nullptr);
+
+        env->DeleteLocalRef(y);
+        env->DeleteLocalRef(uv);
+    } else if (avFrame->format == AV_PIX_FMT_MEDIACODEC) {
+        av_mediacodec_release_buffer((AVMediaCodecBuffer *)avFrame->data[3], 1);
     }
-
-    int ySize = avFrame->width * avFrame->height;
-    auto y = env->NewByteArray(ySize);
-    env->SetByteArrayRegion(y, 0, ySize, reinterpret_cast<const jbyte *>(avFrame->data[0]));
-    auto u = env->NewByteArray(ySize / 4);
-    env->SetByteArrayRegion(u, 0, ySize / 4, reinterpret_cast<const jbyte *>(avFrame->data[1]));
-    auto v = env->NewByteArray(ySize / 4);
-    env->SetByteArrayRegion(v, 0, ySize / 4, reinterpret_cast<const jbyte *>(avFrame->data[2]));
-
-    env->CallVoidMethod(jPlayerListenerObj, onFrameArrived,
-                        avFrame->width, avFrame->height, y, u, v);
-
-    env->DeleteLocalRef(y);
-    env->DeleteLocalRef(u);
-    env->DeleteLocalRef(v);
 }
 
 void FFMpegPlayer::stop() {
@@ -147,6 +176,18 @@ void FFMpegPlayer::stop() {
     }
     mStartTime = -1;
     LOGE("stop done")
+
+    if (mVideoDecoder != nullptr) {
+        delete mVideoDecoder;
+        mVideoDecoder = nullptr;
+    }
+
+    if (mFtx != nullptr) {
+        avformat_close_input(&mFtx);
+        avformat_free_context(mFtx);
+        mFtx = nullptr;
+        LOGI("format context...release")
+    }
 }
 
 void FFMpegPlayer::registerPlayerListener(JNIEnv *env, jobject listener) {
@@ -171,19 +212,5 @@ void FFMpegPlayer::registerPlayerListener(JNIEnv *env, jobject listener) {
         onCallError = nullptr;
         onCallCompleted = nullptr;
         onFrameArrived = nullptr;
-    }
-}
-
-void FFMpegPlayer::release() {
-    if (mVideoDecoder != nullptr) {
-        delete mVideoDecoder;
-        mVideoDecoder = nullptr;
-    }
-
-    if (mFtx != nullptr) {
-        avformat_close_input(&mFtx);
-        avformat_free_context(mFtx);
-        mFtx = nullptr;
-        LOGI("format context...release")
     }
 }

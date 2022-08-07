@@ -48,7 +48,7 @@
  * These asserts() thus can be enabled without fearing speed loss.
  */
 #if defined(ASSERT_LEVEL) && ASSERT_LEVEL > 0
-#define av_assert1(mCond) av_assert0(mCond)
+#define av_assert1(cond) av_assert0(cond)
 #else
 #define av_assert1(cond) ((void)0)
 #endif
@@ -58,7 +58,7 @@
  * assert() equivalent, that does lie in speed critical code.
  */
 #if defined(ASSERT_LEVEL) && ASSERT_LEVEL > 1
-#define av_assert2(mCond) av_assert0(mCond)
+#define av_assert2(cond) av_assert0(cond)
 #define av_assert2_fpu() av_assert0_fpu()
 #else
 #define av_assert2(cond) ((void)0)

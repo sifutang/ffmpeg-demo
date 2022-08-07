@@ -1,14 +1,11 @@
 package com.xyq.ffmpegdemo
 
-import android.opengl.GLSurfaceView
 import android.os.*
 import android.util.Log
 import android.view.MotionEvent
 import androidx.appcompat.app.AppCompatActivity
 import com.xyq.ffmpegdemo.databinding.ActivityMainBinding
 import com.xyq.ffmpegdemo.player.FFPlayer
-import com.xyq.ffmpegdemo.render.SimpleRender
-import com.xyq.ffmpegdemo.render.YuvDrawer
 import com.xyq.ffmpegdemo.utils.FileUtils
 import kotlin.concurrent.thread
 
@@ -23,10 +20,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private lateinit var binding: ActivityMainBinding
-
-    private val mRender = SimpleRender()
-    private val mVideoDrawer = YuvDrawer()
-    private var mPlayer: FFPlayer? = null
+    private lateinit var mPlayer: FFPlayer
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -34,11 +28,8 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        binding.glSurfaceView.setEGLContextClientVersion(2)
-        binding.glSurfaceView.setRenderer(mRender)
-        binding.glSurfaceView.renderMode = GLSurfaceView.RENDERMODE_WHEN_DIRTY
-
-        mRender.addDrawer(mVideoDrawer)
+        mPlayer = FFPlayer(applicationContext, binding.glSurfaceView)
+        mPlayer.init()
     }
 
     override fun onResume() {
@@ -53,30 +44,27 @@ class MainActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        mRender.release()
+        mPlayer.release()
     }
-
 
     private fun startPlay() {
         thread {
             Log.i(TAG, "startPlay: start")
             val path = cacheDir.absolutePath + "/oceans.mp4"
             FileUtils.copyFile2Path(assets.open("oceans.mp4"), path)
-            mPlayer = FFPlayer()
-            mPlayer?.prepare(path, mVideoDrawer, binding.glSurfaceView)
-            mPlayer?.start()
+            mPlayer.prepare(path)
+            mPlayer.start()
         }
     }
 
     private fun stopPlay() {
-        mPlayer?.stop()
-        mPlayer?.release()
+        mPlayer.stop()
         Log.i(TAG, "stopPlay: done")
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
         if (event.action == MotionEvent.ACTION_MOVE) {
-            mVideoDrawer.setFilterProgress(event.x / binding.glSurfaceView.width)
+            mPlayer.setFilterProgress(event.x / binding.glSurfaceView.width)
         }
         return super.onTouchEvent(event)
     }
