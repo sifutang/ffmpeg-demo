@@ -17,22 +17,25 @@ static enum AVPixelFormat get_hw_format(AVCodecContext *ctx,
     return AV_PIX_FMT_NONE;
 }
 
-VideoDecoder::VideoDecoder(int index, AVFormatContext *ftx) {
+VideoDecoder::VideoDecoder(int index, AVFormatContext *ftx, int useHw) {
     mVideoIndex = index;
     mFtx = ftx;
+    mUseHwDecode = useHw;
 }
 
 VideoDecoder::~VideoDecoder() {
     release();
 }
 
-bool VideoDecoder::prepare(AVCodecParameters *codecParameters, jobject surface) {
-    mWidth = codecParameters->width;
-    mHeight = codecParameters->height;
-    mDuration = mFtx->duration;
+bool VideoDecoder::prepare(jobject surface) {
+    AVCodecParameters *params = mFtx->streams[mVideoIndex]->codecpar;
+    mWidth = params->width;
+    mHeight = params->height;
+    mDuration = mFtx->duration * av_q2d(AV_TIME_BASE_Q);
+    LOGE("mDuration: %" PRId64, mDuration)
 
     // find decoder
-    if (mUseHwEncode) {
+    if (mUseHwDecode) {
         AVHWDeviceType type = av_hwdevice_find_type_by_name("mediacodec");
         if (type == AV_HWDEVICE_TYPE_NONE) {
             while ((type = av_hwdevice_iterate_types(type)) != AV_HWDEVICE_TYPE_NONE) {
@@ -61,7 +64,7 @@ bool VideoDecoder::prepare(AVCodecParameters *codecParameters, jobject surface) 
 
             if (hw_pix_fmt == AV_PIX_FMT_NONE) {
                 LOGE("not use surface decoding")
-                mVideoCodec = avcodec_find_decoder(codecParameters->codec_id);
+                mVideoCodec = avcodec_find_decoder(params->codec_id);
             } else {
                 mVideoCodec = h264Mediacodec;
                 int ret = av_hwdevice_ctx_create(&mHwDeviceCtx, type, nullptr, nullptr, 0);
@@ -71,11 +74,11 @@ bool VideoDecoder::prepare(AVCodecParameters *codecParameters, jobject surface) 
             }
         } else {
             LOGE("not find h264_mediacodec")
-            mVideoCodec = avcodec_find_decoder(codecParameters->codec_id);
-            mUseHwEncode = false;
+            mVideoCodec = avcodec_find_decoder(params->codec_id);
+            mUseHwDecode = false;
         }
     } else {
-        mVideoCodec = avcodec_find_decoder(codecParameters->codec_id);
+        mVideoCodec = avcodec_find_decoder(params->codec_id);
     }
 
     if (mVideoCodec == nullptr) {
@@ -95,7 +98,7 @@ bool VideoDecoder::prepare(AVCodecParameters *codecParameters, jobject surface) 
         }
         return false;
     }
-    avcodec_parameters_to_context(mVideoCodecContext, codecParameters);
+    avcodec_parameters_to_context(mVideoCodecContext, params);
 
     if (mHwDeviceCtx) {
         mVideoCodecContext->get_format = get_hw_format;
@@ -132,7 +135,7 @@ int VideoDecoder::decode(AVPacket *avPacket) {
             LOGE("avcodec_receive_frame err: %d", res)
         }
         // todo 有点奇怪，但是这样解码出来才对，不会丢帧，oppo reno ace
-    } while (mUseHwEncode && res == AVERROR(EAGAIN));
+    } while (mUseHwDecode && res == AVERROR(EAGAIN));
 
     if (res != 0) {
         LOGE("avcodec_receive_frame err: %d", res)

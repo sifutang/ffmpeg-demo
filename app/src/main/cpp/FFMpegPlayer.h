@@ -6,8 +6,11 @@
 #include <sstream>
 #include <ctime>
 #include <pthread.h>
+#include <thread>
 #include "Logger.h"
-#include "./decoder/VideoDecoder.h"
+#include "decoder/VideoDecoder.h"
+#include "decoder/AudioDecoder.h"
+#include "base/AVPacketQueue.h"
 
 extern "C" {
 #include "libavutil/avutil.h"
@@ -41,20 +44,33 @@ private:
     jmethodID onFrameArrived = nullptr;
     jobject jPlayerListenerObj = nullptr;
 
+    JavaVM *mJvm = nullptr;
+
     bool mIsRunning = false;
+    bool mHasAbort = false;
 
     int64_t mStartTime = -1;
 
     pthread_cond_t mCond;
     pthread_mutex_t mMutex;
 
+    std::thread *mVideoThread = nullptr;
+    AVPacketQueue *mVideoPacketQueue = nullptr;
     VideoDecoder *mVideoDecoder = nullptr;
+
+    std::thread *mAudioThread = nullptr;
+    AVPacketQueue *mAudioPacketQueue = nullptr;
+    AudioDecoder *mAudioDecoder = nullptr;
 
     AVFormatContext *mFtx = nullptr;
 
     void sync(AVFrame *avFrame);
 
     void doRender(JNIEnv *env, AVFrame *avFrame);
+
+    void VideoDecodeLoop();
+
+    void AudioDecodeLoop();
 };
 
 

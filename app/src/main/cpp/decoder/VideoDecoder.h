@@ -16,7 +16,7 @@ extern "C" {
 class VideoDecoder {
 
 public:
-    VideoDecoder(int index, AVFormatContext *ftx);
+    VideoDecoder(int index, AVFormatContext *ftx, int useHw = false);
     ~VideoDecoder();
 
     int getWidth() const;
@@ -27,7 +27,7 @@ public:
 
     double getDuration() const;
 
-    bool prepare(AVCodecParameters *codecParameters, jobject surface);
+    bool prepare(jobject surface);
 
     int decode(AVPacket *packet);
 
@@ -45,7 +45,7 @@ private:
 
     int64_t mDuration = 0;
 
-    bool mUseHwEncode = true;
+    bool mUseHwDecode = false;
 
     AVFormatContext *mFtx = nullptr;
 

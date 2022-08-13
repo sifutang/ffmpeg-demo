@@ -72,8 +72,10 @@ add_library( # Sets the name of the library.
 
         # Provides a relative path to your source file(s).
         ./decoder/VideoDecoder.cpp
-        Logger.h
+        ./decoder/AudioDecoder.cpp
+        ./base/AVPacketQueue.cpp
         FFMpegPlayer.cpp
+        Logger.h
         native-lib.cpp
         )
 
