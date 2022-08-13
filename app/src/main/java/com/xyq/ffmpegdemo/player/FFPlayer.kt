@@ -1,6 +1,11 @@
 package com.xyq.ffmpegdemo.player
 
 import android.content.Context
+import android.graphics.SurfaceTexture
+import android.media.AudioAttributes
+import android.media.AudioFormat
+import android.media.AudioManager
+import android.media.AudioTrack
 import android.opengl.GLES20
 import android.opengl.GLSurfaceView
 import android.util.Log
@@ -25,6 +30,7 @@ class FFPlayer(private val mContext: Context,
     private var mVideoWidth = -1
     private var mVideoHeight = -1
 
+    private var mAudioTrack: AudioTrack? = null
     private var mDrawer: IDrawer? = null
 
     private var mSurface: Surface? = null
@@ -53,7 +59,9 @@ class FFPlayer(private val mContext: Context,
     }
 
     fun setFilterProgress(value: Float) {
-        (mDrawer as CameraDrawer).setFilterProgress(value)
+        if (mDrawer is CameraDrawer) {
+            (mDrawer as CameraDrawer).setFilterProgress(value)
+        }
     }
 
     fun init() {
@@ -70,16 +78,20 @@ class FFPlayer(private val mContext: Context,
             throw IllegalStateException("must first call setDataSource")
         }
 
-        val st = (mDrawer as CameraDrawer).getSurfaceTexture()
-        st.setOnFrameAvailableListener {
-            Log.i(TAG, "setOnFrameAvailableListener")
-            mGlSurfaceView.requestRender()
-        }
         mSurface?.release()
-        mSurface = Surface(st)
+        mSurface = null
 
+        val st: SurfaceTexture?
+        if (mDrawer is CameraDrawer) {
+            st = (mDrawer as CameraDrawer).getSurfaceTexture()
+            st.setOnFrameAvailableListener {
+                Log.i(TAG, "setOnFrameAvailableListener")
+                mGlSurfaceView.requestRender()
+            }
+            mSurface = Surface(st)
+        }
         registerPlayerListener(mNativePtr, listener)
-        nativePrepare(mNativePtr, path, mSurface!!)
+        nativePrepare(mNativePtr, path, mSurface)
     }
 
     fun start() {
@@ -87,6 +99,12 @@ class FFPlayer(private val mContext: Context,
     }
 
     fun stop() {
+        Log.e(TAG, "stop: ", )
+        val audioTrack = mAudioTrack
+        mAudioTrack = null
+        audioTrack?.stop()
+        audioTrack?.release()
+
         nativeStop(mNativePtr)
         registerPlayerListener(mNativePtr, null)
     }
@@ -104,6 +122,19 @@ class FFPlayer(private val mContext: Context,
             mVideoWidth = width
             mVideoHeight = height
             mDrawer?.setVideoSize(mVideoWidth, mVideoHeight)
+
+            // audio
+            val bufferSize = AudioTrack.getMinBufferSize(44100, AudioFormat.CHANNEL_OUT_STEREO, AudioFormat.ENCODING_PCM_16BIT)
+            Log.e(TAG, "onPrepared: audio buffer size: $bufferSize")
+            mAudioTrack = AudioTrack(
+                AudioAttributes.Builder().setLegacyStreamType(AudioManager.STREAM_MUSIC).build(),
+                AudioFormat.Builder().setChannelMask(AudioFormat.CHANNEL_OUT_STEREO)
+                    .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
+                    .setSampleRate(44100)
+                    .build(),
+                bufferSize, AudioTrack.MODE_STREAM, AudioManager.AUDIO_SESSION_ID_GENERATE
+            )
+            mAudioTrack!!.play()
         }
 
         override fun onFrameArrived(
@@ -113,7 +144,15 @@ class FFPlayer(private val mContext: Context,
             u: ByteArray?,
             v: ByteArray?
         ) {
-            Log.i(TAG, "onFrameArrived: $width, $height")
+            // audio
+            if (width != -1 && height == -1 && y != null && u == null && v == null) {
+                mAudioTrack?.write(y, 0, width)
+                Log.i(TAG, "onFrameArrived: audio arrived, size: $width")
+                return
+            }
+
+            // video
+            Log.i(TAG, "onFrameArrived: $width, $height, v is null: ${v == null}")
             if (mDrawer is CameraDrawer) {
                 mDrawer!!.release()
                 mDrawer = null
@@ -131,7 +170,7 @@ class FFPlayer(private val mContext: Context,
                 mDrawer!!.setWorldSize(mSurfaceWidth, mSurfaceHeight)
             }
 
-            if (v == null) {
+            if (mDrawer is NV12Drawer) {
                 (mDrawer as NV12Drawer).pushNv21(width, height, y, u)
             } else {
                 (mDrawer as YuvDrawer).pushYuv(width, height, y, u, v)
@@ -153,7 +192,7 @@ class FFPlayer(private val mContext: Context,
 
     private external fun registerPlayerListener(handle: Long, listener: PlayerListener?)
 
-    private external fun nativePrepare(handle: Long, path: String, surface: Surface): Boolean
+    private external fun nativePrepare(handle: Long, path: String, surface: Surface?): Boolean
 
     private external fun nativeStart(handle: Long)
 
