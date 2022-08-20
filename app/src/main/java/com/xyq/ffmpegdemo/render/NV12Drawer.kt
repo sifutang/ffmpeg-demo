@@ -77,7 +77,7 @@ class NV12Drawer: IDrawer {
     }
 
     private var mInitRunnable: Runnable? = null
-    override fun init() {
+    override fun init(async: Boolean) {
         mInitRunnable = Runnable {
             val size = getTextureSize()
             mYuvTextures = OpenGLTools.createTextureIds(size)

@@ -33,6 +33,7 @@ abstract class BaseDrawer : IDrawer {
     )
 
     private var mInit = false
+    private var mInitRunnable: Runnable? = null
 
     private var mWorldWidth = -1
     private var mWorldHeight = -1
@@ -91,20 +92,29 @@ abstract class BaseDrawer : IDrawer {
 
     abstract fun onRelease()
 
-    override fun init() {
-        mProgram = ShaderHelper.buildProgram(getVertexShader(), getFragmentShader())
+    override fun init(async: Boolean) {
+        mInitRunnable = Runnable {
+            mProgram = ShaderHelper.buildProgram(getVertexShader(), getFragmentShader())
 
-        mVertexPosHandler = GLES20.glGetAttribLocation(mProgram, "aPosition")
-        mTexturePosHandler = GLES20.glGetAttribLocation(mProgram, "aCoordinate")
+            mVertexPosHandler = GLES20.glGetAttribLocation(mProgram, "aPosition")
+            mTexturePosHandler = GLES20.glGetAttribLocation(mProgram, "aCoordinate")
 
-        mVertexMatrixHandler = GLES20.glGetUniformLocation(mProgram, "uMatrix")
+            mVertexMatrixHandler = GLES20.glGetUniformLocation(mProgram, "uMatrix")
 
-        onInit()
+            onInit()
 
-        mInit = true
+            mInit = true
+        }
+        if (!async) {
+            mInitRunnable?.run()
+            mInitRunnable = null
+        }
     }
 
     override fun draw() {
+        mInitRunnable?.run()
+        mInitRunnable = null
+
         if (mInit) {
             initDefMatrix()
             doDraw()

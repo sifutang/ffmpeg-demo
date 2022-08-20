@@ -73,7 +73,7 @@ int av_timecode_adjust_ntsc_framenum2(int framenum, int fps);
  * bits 23:    FIELD (NTSC) or BGF0 (PAL)
  * bits 24-29: frames, in BCD(6bits)
  * bits 30:    drop  frame flag (0: non drop,    1: drop)
- * bits 31:    color frame flag (0: unsync mode, 1: sync mode)
+ * bits 31:    color frame flag (0: unsync mode, 1: avSync mode)
  * @note BCD numbers (6 or 7 bits): 4 or 5 lower bits for units, 2 higher bits for tens.
  * @note Frame number adjustment is automatically done in case of drop timecode,
  *       you do NOT have to call av_timecode_adjust_ntsc_framenum2().

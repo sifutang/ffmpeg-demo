@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <declare-styleable name="AudioVisualizeView">
+        <attr name="visualize_color" format="reference|color"/>
+        <attr name="visualize_count" format="integer"/>
+        <attr name="visualize_item_margin" format="dimension"/>
+    </declare-styleable>
+
+</resources>

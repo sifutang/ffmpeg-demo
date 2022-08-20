@@ -1,10 +1,8 @@
 #include "AudioDecoder.h"
-#include "../Logger.h"
+#include "../utils/Logger.h"
 
-AudioDecoder::AudioDecoder(int index, AVFormatContext *ftx) {
+AudioDecoder::AudioDecoder(int index, AVFormatContext *ftx): BaseDecoder(index, ftx) {
     LOGI("AudioDecoder")
-    mAudioIndex = index;
-    mFtx = ftx;
 }
 
 AudioDecoder::~AudioDecoder() {
@@ -12,7 +10,7 @@ AudioDecoder::~AudioDecoder() {
 }
 
 bool AudioDecoder::prepare() {
-    AVCodecParameters *params = mFtx->streams[mAudioIndex]->codecpar;
+    AVCodecParameters *params = mFtx->streams[getStreamIndex()]->codecpar;
 
     mAudioCodec = avcodec_find_decoder(params->codec_id);
     if (mAudioCodec == nullptr) {
@@ -46,11 +44,26 @@ bool AudioDecoder::prepare() {
 
     mAvFrame = av_frame_alloc();
 
-    LOGI("[audio] prepare, sample rate: %d, channels: %d, channel_layout: %" PRId64 ", fmt: %d",
-         mAudioCodecContext->sample_rate, mAudioCodecContext->channels,
-         mAudioCodecContext->channel_layout, mAudioCodecContext->sample_fmt)
+    mSwrContext = swr_alloc_set_opts(
+            nullptr,
+            AV_CH_LAYOUT_STEREO,
+            AV_SAMPLE_FMT_S16,
+            44100,
 
-    return true;
+            (int64_t)mAudioCodecContext->channel_layout,
+            mAudioCodecContext->sample_fmt,
+            mAudioCodecContext->sample_rate,
+            0,
+            nullptr
+            );
+    ret = swr_init(mSwrContext);
+
+    LOGI("[audio] prepare, sample rate: %d, channels: %d, channel_layout: %" PRId64 ", fmt: %d, swr_init: %d",
+         mAudioCodecContext->sample_rate, mAudioCodecContext->channels, mAudioCodecContext->channel_layout, mAudioCodecContext->sample_fmt, ret);
+
+    mStartTime = -1;
+
+    return ret == 0;
 }
 
 int AudioDecoder::decode(AVPacket *avPacket) {
@@ -63,25 +76,8 @@ int AudioDecoder::decode(AVPacket *avPacket) {
         av_frame_unref(mAvFrame);
         return res;
     }
-    LOGI("[audio] avcodec_receive_frame...pts: %" PRId64 ", format: %d", mAvFrame->pts, mAvFrame->format)
-
-    if (mSwrContext == nullptr) {
-        mSwrContext = swr_alloc_set_opts(
-                nullptr,
-                AV_CH_LAYOUT_STEREO,
-                AV_SAMPLE_FMT_S16,
-                44100,
-
-                mAvFrame->channel_layout,
-                AVSampleFormat(mAvFrame->format),
-                mAvFrame->sample_rate,
-                0,
-                nullptr
-        );
-        int ret = swr_init(mSwrContext);
-        LOGI("alloc swr context, sample_rate: %d, channel_layout: %" PRId64 ", nb_samples: %d, ret: %d",
-             mAvFrame->sample_rate, mAvFrame->channel_layout, mAvFrame->nb_samples, ret)
-    }
+    auto pts = mAvFrame->pts * av_q2d(mFtx->streams[getStreamIndex()]->time_base) * 1000;
+    LOGI("[audio] avcodec_receive_frame...pts: %" PRId64 ", time: %f, best_effort_timestamp: %" PRId64, mAvFrame->pts, pts, mAvFrame->best_effort_timestamp)
 
     int out_nb = (int) av_rescale_rnd(mAvFrame->nb_samples, 44100, mAvFrame->sample_rate, AV_ROUND_UP);
     int out_channels = av_get_channel_layout_nb_channels(AV_CH_LAYOUT_STEREO);
@@ -99,12 +95,14 @@ int AudioDecoder::decode(AVPacket *avPacket) {
             mAvFrame->nb_samples
             );
 
-    mDataSize = nb * out_channels * av_get_bytes_per_sample(AV_SAMPLE_FMT_S16);
-    LOGI("swr_convert, dataSize: %d, nb: %d, out_channels: %d", mDataSize, nb, out_channels)
-
-    if (mOnFrameArrivedListener != nullptr) {
-        mOnFrameArrivedListener(mAvFrame);
+    mDataSize = 0;
+    if (nb > 0) {
+        mDataSize = nb * out_channels * av_get_bytes_per_sample(AV_SAMPLE_FMT_S16);
+        if (mOnFrameArrivedListener != nullptr) {
+            mOnFrameArrivedListener(mAvFrame);
+        }
     }
+    LOGI("swr_convert, dataSize: %d, nb: %d, out_channels: %d", mDataSize, nb, out_channels)
 
     return 0;
 }
@@ -136,14 +134,25 @@ void AudioDecoder::release() {
     }
 }
 
-int AudioDecoder::getStreamIndex() const {
-    return mAudioIndex;
-}
-
-void AudioDecoder::setErrorMsgListener(std::function<void(int, std::string &)> listener) {
-    mErrorMsgListener = std::move(listener);
-}
-
-void AudioDecoder::setOnFrameArrived(std::function<void(AVFrame *)> listener) {
-    mOnFrameArrivedListener = std::move(listener);
+void AudioDecoder::avSync(AVFrame *frame) {
+    int64_t pts = frame->best_effort_timestamp;
+    if (pts == AV_NOPTS_VALUE) {
+        pts = 0;
+        LOGE("AV_NOPTS_VALUE")
+    }
+    // s -> us
+    pts = pts * (int64_t)(av_q2d(mTimeBase) * 1000 * 1000);
+    int64_t elapsedTime;
+    if (mStartTime < 0) {
+        mStartTime = av_gettime();
+        elapsedTime = 0;
+    } else {
+        elapsedTime = av_gettime() - mStartTime;
+    }
+    int64_t diff = pts - elapsedTime;
+    diff = FFMIN(diff, DELAY_THRESHOLD);
+    LOGI("[audio] avSync, pts: %" PRId64 ", elapsedTime: %" PRId64 " diff: %" PRId64 "ms", pts, elapsedTime, (diff / 1000))
+    if (diff > 0) {
+        av_usleep(diff);
+    }
 }

@@ -3,39 +3,33 @@
 
 #include <functional>
 #include <string>
+#include "../utils/ImageDef.h"
+#include "BaseDecoder.h"
 
 extern "C" {
-#include "libavformat/avformat.h"
-#include "libavcodec/avcodec.h"
 #include "libswresample/swresample.h"
 #include "libavutil/imgutils.h"
 }
 
-class AudioDecoder {
+class AudioDecoder: public BaseDecoder {
 
 public:
     AudioDecoder(int index, AVFormatContext *ftx);
     ~AudioDecoder();
 
-    bool prepare();
+    virtual bool prepare() override;
 
-    int decode(AVPacket *packet);
+    virtual int decode(AVPacket *packet) override;
 
-    void release();
+    virtual void avSync(AVFrame *frame) override;
 
-    void setErrorMsgListener(std::function<void(int, std::string &)> listener);
-
-    void setOnFrameArrived(std::function<void(AVFrame *)> listener);
-
-    int getStreamIndex() const;
+    virtual void release() override;
 
     int mDataSize = 0;
     uint8_t *mAudioBuffer = nullptr;
 
 private:
-    int mAudioIndex = -1;
-
-    AVFormatContext *mFtx = nullptr;
+    int64_t mStartTime = -1;
 
     const AVCodec *mAudioCodec = nullptr;
 
@@ -44,11 +38,6 @@ private:
     AVFrame *mAvFrame = nullptr;
 
     SwrContext *mSwrContext = nullptr;
-
-    std::function<void(int, std::string &)> mErrorMsgListener = nullptr;
-
-    std::function<void(AVFrame *)> mOnFrameArrivedListener = nullptr;
-
 };
 
 

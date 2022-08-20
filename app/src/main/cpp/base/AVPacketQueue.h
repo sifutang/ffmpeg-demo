@@ -12,7 +12,7 @@ extern "C" {
 class AVPacketQueue {
 
 public:
-    AVPacketQueue(int maxSize);
+    AVPacketQueue(int64_t maxSize);
 
     ~AVPacketQueue();
 
@@ -26,18 +26,18 @@ public:
 
     bool isEmpty();
 
-    void wait(unsigned int timeOutMs);
+    void wait(unsigned int timeOutMs = -1);
 
     void notify();
 
 private:
 
-    int mMaxSize = 10;
+    int64_t mMaxSize = INT64_MAX;
 
     std::queue<AVPacket *> mQueue;
 
-    pthread_cond_t mCond;
-    pthread_mutex_t mMutex;
+    pthread_cond_t mCond{};
+    pthread_mutex_t mMutex{};
 };
 
 

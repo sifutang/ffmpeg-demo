@@ -7,7 +7,7 @@
 #include <ctime>
 #include <pthread.h>
 #include <thread>
-#include "Logger.h"
+#include "utils/Logger.h"
 #include "decoder/VideoDecoder.h"
 #include "decoder/AudioDecoder.h"
 #include "base/AVPacketQueue.h"
@@ -21,6 +21,23 @@ extern "C" {
 #include "libavcodec/jni.h"
 }
 
+typedef struct PlayerJniContext {
+    jobject instance;
+    jmethodID onVideoPrepared;
+    jmethodID onAudioPrepared;
+    jmethodID onVideoFrameArrived;
+    jmethodID onAudioFrameArrived;
+
+    void reset() {
+        instance = nullptr;
+        onVideoPrepared = nullptr;
+        onAudioPrepared = nullptr;
+        onVideoFrameArrived = nullptr;
+        onAudioFrameArrived = nullptr;
+    }
+
+} PlayerJniContext;
+
 class FFMpegPlayer {
 
 public:
@@ -29,30 +46,23 @@ public:
 
     ~FFMpegPlayer();
 
+    void init(JNIEnv *env, jobject javaObj);
+
     bool prepare(JNIEnv *env, std::string &path, jobject surface);
 
-    void start(JNIEnv *env);
+    void start();
 
     void stop();
 
-    void registerPlayerListener(JNIEnv *env, jobject listener);
-
 private:
-    jmethodID onCallPrepared = nullptr;
-    jmethodID onCallError = nullptr;
-    jmethodID onCallCompleted = nullptr;
-    jmethodID onFrameArrived = nullptr;
-    jobject jPlayerListenerObj = nullptr;
-
     JavaVM *mJvm = nullptr;
+    PlayerJniContext mPlayerJni{};
 
     bool mIsRunning = false;
     bool mHasAbort = false;
 
-    int64_t mStartTime = -1;
-
-    pthread_cond_t mCond;
-    pthread_mutex_t mMutex;
+    pthread_cond_t mCond{};
+    pthread_mutex_t mMutex{};
 
     std::thread *mVideoThread = nullptr;
     AVPacketQueue *mVideoPacketQueue = nullptr;
@@ -63,8 +73,6 @@ private:
     AudioDecoder *mAudioDecoder = nullptr;
 
     AVFormatContext *mFtx = nullptr;
-
-    void sync(AVFrame *avFrame);
 
     void doRender(JNIEnv *env, AVFrame *avFrame);
 

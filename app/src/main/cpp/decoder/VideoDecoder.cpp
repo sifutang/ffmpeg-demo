@@ -1,5 +1,6 @@
 #include "VideoDecoder.h"
-#include "../Logger.h"
+#include "../utils/Logger.h"
+#include "../utils/CommonUtils.h"
 
 static enum AVPixelFormat hw_pix_fmt = AV_PIX_FMT_NONE;
 static enum AVPixelFormat get_hw_format(AVCodecContext *ctx,
@@ -17,9 +18,7 @@ static enum AVPixelFormat get_hw_format(AVCodecContext *ctx,
     return AV_PIX_FMT_NONE;
 }
 
-VideoDecoder::VideoDecoder(int index, AVFormatContext *ftx, int useHw) {
-    mVideoIndex = index;
-    mFtx = ftx;
+VideoDecoder::VideoDecoder(int index, AVFormatContext *ftx, int useHw): BaseDecoder(index, ftx) {
     mUseHwDecode = useHw;
 }
 
@@ -27,12 +26,16 @@ VideoDecoder::~VideoDecoder() {
     release();
 }
 
-bool VideoDecoder::prepare(jobject surface) {
-    AVCodecParameters *params = mFtx->streams[mVideoIndex]->codecpar;
+void VideoDecoder::setSurface(jobject surface) {
+    mSurface = surface;
+}
+
+bool VideoDecoder::prepare() {
+    AVCodecParameters *params = mFtx->streams[getStreamIndex()]->codecpar;
     mWidth = params->width;
     mHeight = params->height;
     mDuration = mFtx->duration * av_q2d(AV_TIME_BASE_Q);
-    LOGE("mDuration: %" PRId64, mDuration)
+    LOGE("[video] mDuration: %" PRId64, mDuration)
 
     // find decoder
     if (mUseHwDecode) {
@@ -104,9 +107,9 @@ bool VideoDecoder::prepare(jobject surface) {
         mVideoCodecContext->get_format = get_hw_format;
         mVideoCodecContext->hw_device_ctx = av_buffer_ref(mHwDeviceCtx);
 
-        if (surface != nullptr) {
+        if (mSurface != nullptr) {
             mMediaCodecContext = av_mediacodec_alloc_context();
-            av_mediacodec_default_init(mVideoCodecContext, mMediaCodecContext, surface);
+            av_mediacodec_default_init(mVideoCodecContext, mMediaCodecContext, mSurface);
         }
     }
 
@@ -121,13 +124,14 @@ bool VideoDecoder::prepare(jobject surface) {
     }
 
     mAvFrame = av_frame_alloc();
+    mStartTime = -1;
     LOGI("codec name: %s", mVideoCodec->name)
     return true;
 }
 
 int VideoDecoder::decode(AVPacket *avPacket) {
     int res = avcodec_send_packet(mVideoCodecContext, avPacket);
-    LOGI("avcodec_send_packet...pts: %" PRId64 ", dts: %" PRId64 ", res: %d", avPacket->pts, avPacket->dts, res)
+    LOGI("[video] avcodec_send_packet...pts: %" PRId64 ", dts: %" PRId64 ", res: %d", avPacket->pts, avPacket->dts, res)
 
     do {
         res = avcodec_receive_frame(mVideoCodecContext, mAvFrame);
@@ -196,6 +200,7 @@ int VideoDecoder::decode(AVPacket *avPacket) {
 }
 
 void VideoDecoder::release() {
+    mStartTime = -1;
     if (mAvFrame != nullptr) {
         av_frame_free(&mAvFrame);
         av_freep(&mAvFrame);
@@ -228,14 +233,6 @@ void VideoDecoder::release() {
     }
 }
 
-void VideoDecoder::setOnFrameArrived(std::function<void(AVFrame *)> listener) {
-    mOnFrameArrivedListener = std::move(listener);
-}
-
-void VideoDecoder::setErrorMsgListener(std::function<void(int, std::string &)> listener) {
-    mErrorMsgListener = std::move(listener);
-}
-
 int VideoDecoder::getWidth() const {
     return mWidth;
 }
@@ -244,10 +241,30 @@ int VideoDecoder::getHeight() const {
     return mHeight;
 }
 
-int VideoDecoder::getStreamIndex() const {
-    return mVideoIndex;
-}
-
 double VideoDecoder::getDuration() const {
     return (double)mDuration;
+}
+
+void VideoDecoder::avSync(AVFrame *frame) {
+    int64_t pts = 0;
+    if (frame->pkt_dts != AV_NOPTS_VALUE) {
+        pts = frame->pkt_dts;
+    } else if (frame->pts != AV_NOPTS_VALUE) {
+        pts = frame->pts;
+    }
+    // s -> us
+    pts = pts * (int64_t)(av_q2d(mTimeBase) * 1000 * 1000);
+    int64_t elapsedTime;
+    if (mStartTime < 0) {
+        mStartTime = av_gettime();
+        elapsedTime = 0;
+    } else {
+        elapsedTime = av_gettime() - mStartTime;
+    }
+    int64_t diff = pts - elapsedTime;
+    diff = FFMIN(diff, DELAY_THRESHOLD);
+    LOGI("[video] avSync, pts: %" PRId64 ", elapsedTime: %" PRId64 " diff: %" PRId64 "ms", pts, elapsedTime, (diff / 1000))
+    if (diff > 0) {
+        av_usleep(diff);
+    }
 }

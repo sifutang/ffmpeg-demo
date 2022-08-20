@@ -10,3 +10,7 @@ just for study ffmpeg, base5.0.1
 [Android FFmpeg系列03--视频解码与渲染](https://mp.weixin.qq.com/s/cBZcUhZDiZVTXDY4jAWt7Q)
 
 [Android FFmpeg系列04--FFmpeg调用MediaCodec进行硬解码](https://mp.weixin.qq.com/s/mrBiiDT5jvsDDmAJK34TLA)
+
+[Android FFmpeg系列05--音频解码与播放](https://mp.weixin.qq.com/s/fnESmyGDv2iHTE1DxjZ8Kg)
+
+[Android FFmpeg系列06--音频可视化]()

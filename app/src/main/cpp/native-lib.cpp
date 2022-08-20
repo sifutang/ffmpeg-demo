@@ -1,19 +1,11 @@
 #include <jni.h>
 #include "FFMpegPlayer.h"
 
-extern "C" JNIEXPORT void JNICALL
-Java_com_xyq_ffmpegdemo_player_FFPlayer_registerPlayerListener(JNIEnv *env, jobject thiz, jlong handle,
-                                                                jobject listener) {
-    auto *player = reinterpret_cast<FFMpegPlayer *>(handle);
-    if (player) {
-        player->registerPlayerListener(env, listener);
-    }
-}
-
 extern "C"
 JNIEXPORT jlong JNICALL
 Java_com_xyq_ffmpegdemo_player_FFPlayer_nativeInit(JNIEnv *env, jobject thiz) {
     auto *player = new FFMpegPlayer();
+    player->init(env, thiz);
     return reinterpret_cast<long>(player);
 }
 
@@ -39,7 +31,7 @@ JNIEXPORT void JNICALL
 Java_com_xyq_ffmpegdemo_player_FFPlayer_nativeStart(JNIEnv *env, jobject thiz, jlong handle) {
     auto *player = reinterpret_cast<FFMpegPlayer *>(handle);
     if (player) {
-        player->start(env);
+        player->start();
     }
 }
 

@@ -71,11 +71,16 @@ add_library( # Sets the name of the library.
         SHARED
 
         # Provides a relative path to your source file(s).
+        ./decoder/BaseDecoder.cpp
         ./decoder/VideoDecoder.cpp
         ./decoder/AudioDecoder.cpp
         ./base/AVPacketQueue.cpp
+
+        utils/Logger.h
+        utils/ImageDef.h
+        utils/CommonUtils.h
+
         FFMpegPlayer.cpp
-        Logger.h
         native-lib.cpp
         )
 

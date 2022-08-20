@@ -4,16 +4,15 @@
 #include <jni.h>
 #include <functional>
 #include <string>
+#include "BaseDecoder.h"
 
 extern "C" {
-#include "libavformat/avformat.h"
-#include "libavcodec/avcodec.h"
 #include "libavcodec/mediacodec.h"
 #include "libswscale/swscale.h"
 #include "libavutil/imgutils.h"
 }
 
-class VideoDecoder {
+class VideoDecoder: public BaseDecoder {
 
 public:
     VideoDecoder(int index, AVFormatContext *ftx, int useHw = false);
@@ -23,31 +22,29 @@ public:
 
     int getHeight() const;
 
-    int getStreamIndex() const;
-
     double getDuration() const;
 
-    bool prepare(jobject surface);
+    void setSurface(jobject surface);
 
-    int decode(AVPacket *packet);
+    virtual bool prepare() override;
 
-    void release();
+    virtual int decode(AVPacket *packet) override;
 
-    void setOnFrameArrived(std::function<void(AVFrame *)> listener);
+    virtual void avSync(AVFrame *frame) override;
 
-    void setErrorMsgListener(std::function<void(int, std::string &)> listener);
+    virtual void release() override;
 
 private:
     int mWidth = -1;
     int mHeight = -1;
 
-    int mVideoIndex = -1;
+    int64_t mStartTime = -1;
 
     int64_t mDuration = 0;
 
     bool mUseHwDecode = false;
 
-    AVFormatContext *mFtx = nullptr;
+    jobject mSurface = nullptr;
 
     AVBufferRef *mHwDeviceCtx = nullptr;
 
@@ -60,10 +57,6 @@ private:
     AVFrame *mAvFrame = nullptr;
 
     SwsContext *mSwsContext = nullptr;
-
-    std::function<void(AVFrame *)> mOnFrameArrivedListener = nullptr;
-
-    std::function<void(int, std::string &)> mErrorMsgListener = nullptr;
 
 };
 

@@ -2,7 +2,7 @@ package com.xyq.ffmpegdemo.render
 
 interface IDrawer {
 
-    fun init()
+    fun init(async: Boolean)
 
     fun draw()
 

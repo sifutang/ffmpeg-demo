@@ -9,9 +9,9 @@ import kotlin.math.roundToInt
 class AutoFitSurfaceView : SurfaceView {
     private var aspectRatio = 0f
 
-    constructor(context: Context?) : super(context) {}
-    constructor(context: Context?, attrs: AttributeSet?) : super(context, attrs) {}
-    constructor(context: Context?, attrs: AttributeSet?, defStyleAttr: Int) : super(context, attrs, defStyleAttr) {}
+    constructor(context: Context?) : super(context)
+    constructor(context: Context?, attrs: AttributeSet?) : super(context, attrs)
+    constructor(context: Context?, attrs: AttributeSet?, defStyleAttr: Int) : super(context, attrs, defStyleAttr)
 
     fun setAspectRatio(width: Int, height: Int) {
         if (width > 0 && height > 0) {

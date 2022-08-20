@@ -1,7 +1,7 @@
 #include "AVPacketQueue.h"
 #include <ctime>
 
-AVPacketQueue::AVPacketQueue(int maxSize) {
+AVPacketQueue::AVPacketQueue(int64_t maxSize) {
     pthread_mutex_init(&mMutex, nullptr);
     pthread_cond_init(&mCond, nullptr);
     mMaxSize = maxSize;
@@ -29,7 +29,7 @@ AVPacket * AVPacketQueue::pop() {
 }
 
 bool AVPacketQueue::isFull() {
-    int queueSize;
+    int64_t queueSize;
     pthread_mutex_lock(&mMutex);
     queueSize = (int)mQueue.size();
     pthread_mutex_unlock(&mMutex);
@@ -63,9 +63,9 @@ void AVPacketQueue::notify() {
 }
 
 bool AVPacketQueue::isEmpty() {
-    int size;
+    int64_t size;
     pthread_mutex_lock(&mMutex);
-    size = (int)mQueue.size();
+    size = (int64_t)mQueue.size();
     pthread_mutex_unlock(&mMutex);
     return size == 0;
 }

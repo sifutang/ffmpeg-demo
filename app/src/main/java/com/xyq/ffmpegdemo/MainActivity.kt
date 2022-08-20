@@ -1,5 +1,7 @@
 package com.xyq.ffmpegdemo
 
+import android.Manifest
+import android.content.pm.PackageManager
 import android.os.*
 import android.util.Log
 import android.view.MotionEvent
@@ -21,20 +23,25 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
     private lateinit var mPlayer: FFPlayer
+    private var hasPermission = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        binding.seekBar.isEnabled = false
 
-        mPlayer = FFPlayer(applicationContext, binding.glSurfaceView)
-        mPlayer.init()
+        hasPermission = checkPermission()
+
+        mPlayer = FFPlayer(applicationContext, binding.glSurfaceView, binding.audioVisualizeView)
     }
 
     override fun onResume() {
         super.onResume()
-        startPlay()
+        if (hasPermission) {
+            startPlay()
+        }
     }
 
     override fun onPause() {
@@ -45,6 +52,32 @@ class MainActivity : AppCompatActivity() {
     override fun onDestroy() {
         super.onDestroy()
         mPlayer.release()
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == 1000 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+            hasPermission = true
+            Log.i(TAG, "onRequestPermissionsResult:")
+        }
+    }
+
+    private fun checkPermission(): Boolean {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            if (checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+                requestPermissions(
+                    arrayOf(
+                        Manifest.permission.RECORD_AUDIO,
+                    ), 1000
+                )
+                return false
+            }
+        }
+        return true
     }
 
     private fun startPlay() {

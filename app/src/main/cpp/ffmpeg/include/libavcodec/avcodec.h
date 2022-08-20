@@ -2827,7 +2827,7 @@ typedef struct AVCodecParserContext {
     /**
      * Synchronization point for start of timestamp generation.
      *
-     * Set to >0 for sync point, 0 for no sync point and <0 for undefined
+     * Set to >0 for sync point, 0 for no avSync point and <0 for undefined
      * (default).
      *
      * For example, this corresponds to presence of H.264 buffering period
@@ -2836,15 +2836,15 @@ typedef struct AVCodecParserContext {
     int dts_sync_point;
 
     /**
-     * Offset of the current timestamp against last timestamp sync point in
+     * Offset of the current timestamp against last timestamp avSync point in
      * units of AVCodecContext.time_base.
      *
      * Set to INT_MIN when dts_sync_point unused. Otherwise, it must
      * contain a valid timestamp offset.
      *
-     * Note that the timestamp of sync point has usually a nonzero
-     * dts_ref_dts_delta, which refers to the previous sync point. Offset of
-     * the next frame after timestamp sync point will be usually 1.
+     * Note that the timestamp of avSync point has usually a nonzero
+     * dts_ref_dts_delta, which refers to the previous avSync point. Offset of
+     * the next frame after timestamp avSync point will be usually 1.
      *
      * For example, this corresponds to H.264 cpb_removal_delay.
      */
