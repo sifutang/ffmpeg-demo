@@ -76,6 +76,7 @@ bool FFMpegPlayer::prepare(JNIEnv *env, std::string &path, jobject surface) {
     bool prepared = mVideoDecoder->prepare();
     mIsRunning = prepared;
     mHasAbort = false;
+    mIsAudioEOF = false;
     if (mPlayerJni.instance != nullptr && mPlayerJni.onVideoPrepared != nullptr) {
         env->CallVoidMethod(mPlayerJni.instance, mPlayerJni.onVideoPrepared, mVideoDecoder->getWidth(), mVideoDecoder->getHeight());
     }
@@ -129,6 +130,7 @@ void FFMpegPlayer::start() {
     if (mIsRunning) {
         LOGI("decode...end")
         mIsRunning = false;
+        mIsAudioEOF = true;
     } else {
         LOGI("decode...abort")
     }
@@ -313,7 +315,7 @@ void FFMpegPlayer::AudioDecodeLoop() {
 
     mAudioDecoder->setOnFrameArrived([this, env](AVFrame *frame) {
         if (!mHasAbort && mAudioDecoder) {
-            mAudioDecoder->avSync(frame);
+//            mAudioDecoder->avSync(frame);
             doRender(env, frame);
         } else {
             LOGE("[audio] setOnFrameArrived, has abort")

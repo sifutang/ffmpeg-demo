@@ -142,7 +142,7 @@ int VideoDecoder::decode(AVPacket *avPacket) {
     } while (mUseHwDecode && res == AVERROR(EAGAIN));
 
     if (res != 0) {
-        LOGE("avcodec_receive_frame err: %d", res)
+        LOGE("[video] avcodec_receive_frame err: %d", res)
         av_frame_unref(mAvFrame);
         return res;
     }

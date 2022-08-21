@@ -83,8 +83,10 @@ class MainActivity : AppCompatActivity() {
     private fun startPlay() {
         thread {
             Log.i(TAG, "startPlay: start")
-            val path = cacheDir.absolutePath + "/oceans.mp4"
-            FileUtils.copyFile2Path(assets.open("oceans.mp4"), path)
+            val testVideo = "oceans.mp4"
+//            val testVideo = "av_sync_test.mp4"
+            val path = cacheDir.absolutePath + "/$testVideo"
+            FileUtils.copyFile2Path(assets.open(testVideo), path)
             mPlayer.prepare(path)
             mPlayer.start()
         }
