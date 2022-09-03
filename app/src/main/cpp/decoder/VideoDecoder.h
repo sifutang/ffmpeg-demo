@@ -22,9 +22,9 @@ public:
 
     int getHeight() const;
 
-    double getDuration() const;
-
     void setSurface(jobject surface);
+
+    virtual double getDuration() override;
 
     virtual bool prepare() override;
 
@@ -39,8 +39,6 @@ private:
     int mHeight = -1;
 
     int64_t mStartTime = -1;
-
-    int64_t mDuration = 0;
 
     bool mUseHwDecode = false;
 

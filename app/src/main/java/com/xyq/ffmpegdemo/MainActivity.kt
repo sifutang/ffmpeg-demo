@@ -67,27 +67,42 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun checkPermission(): Boolean {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            if (checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
-                requestPermissions(
-                    arrayOf(
-                        Manifest.permission.RECORD_AUDIO,
-                    ), 1000
-                )
-                return false
-            }
+        if (checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(
+                arrayOf(
+                    Manifest.permission.RECORD_AUDIO,
+                ), 1000
+            )
+            return false
         }
         return true
     }
 
     private fun startPlay() {
+        binding.seekBar.isEnabled = true
+        binding.seekBar.progress = 0
         thread {
             Log.i(TAG, "startPlay: start")
-            val testVideo = "oceans.mp4"
-//            val testVideo = "av_sync_test.mp4"
+//            val testVideo = "oceans.mp4"
+            val testVideo = "av_sync_test.mp4"
             val path = cacheDir.absolutePath + "/$testVideo"
             FileUtils.copyFile2Path(assets.open(testVideo), path)
+
             mPlayer.prepare(path)
+            val duration = mPlayer.getDuration()
+            Log.i(TAG, "startPlay: duration: $duration")
+
+            mPlayer.setListener(object : FFPlayer.FFPlayerListener {
+
+                override fun onProgress(timestamp: Double) {
+                    runOnUiThread {
+                        // seek bar: [0, 100]
+                        val curTimeS = timestamp / 1000
+                        binding.seekBar.progress = ((curTimeS / duration) * 100).toInt()
+                    }
+                }
+
+            })
             mPlayer.start()
         }
     }

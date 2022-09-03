@@ -34,8 +34,6 @@ bool VideoDecoder::prepare() {
     AVCodecParameters *params = mFtx->streams[getStreamIndex()]->codecpar;
     mWidth = params->width;
     mHeight = params->height;
-    mDuration = mFtx->duration * av_q2d(AV_TIME_BASE_Q);
-    LOGE("[video] mDuration: %" PRId64, mDuration)
 
     // find decoder
     if (mUseHwDecode) {
@@ -241,8 +239,8 @@ int VideoDecoder::getHeight() const {
     return mHeight;
 }
 
-double VideoDecoder::getDuration() const {
-    return (double)mDuration;
+double VideoDecoder::getDuration() {
+    return mDuration;
 }
 
 void VideoDecoder::avSync(AVFrame *frame) {
@@ -254,6 +252,7 @@ void VideoDecoder::avSync(AVFrame *frame) {
     }
     // s -> us
     pts = pts * (int64_t)(av_q2d(mTimeBase) * 1000 * 1000);
+
     int64_t elapsedTime;
     if (mStartTime < 0) {
         mStartTime = av_gettime();
@@ -261,9 +260,10 @@ void VideoDecoder::avSync(AVFrame *frame) {
     } else {
         elapsedTime = av_gettime() - mStartTime;
     }
+
     int64_t diff = pts - elapsedTime;
     diff = FFMIN(diff, DELAY_THRESHOLD);
-    LOGI("[video] avSync, pts: %" PRId64 ", elapsedTime: %" PRId64 " diff: %" PRId64 "ms", pts, elapsedTime, (diff / 1000))
+    LOGI("[video] avSync, pts: %" PRId64 "ms, diff: %" PRId64 "ms", (pts / 1000), (diff / 1000))
     if (diff > 0) {
         av_usleep(diff);
     }

@@ -54,13 +54,14 @@ public:
 
     void stop();
 
+    double getDuration();
+
 private:
     JavaVM *mJvm = nullptr;
     PlayerJniContext mPlayerJni{};
 
     bool mIsRunning = false;
     bool mHasAbort = false;
-    bool mIsAudioEOF = false;
 
     pthread_cond_t mCond{};
     pthread_mutex_t mMutex{};

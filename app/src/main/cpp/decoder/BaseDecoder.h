@@ -18,6 +18,8 @@ public:
     BaseDecoder(int index, AVFormatContext *ftx);
     ~BaseDecoder();
 
+    virtual double getDuration();
+
     virtual bool prepare();
 
     virtual int decode(AVPacket *packet);
@@ -36,6 +38,8 @@ protected:
     AVFormatContext *mFtx = nullptr;
 
     AVRational mTimeBase{};
+
+    double mDuration = 0;
 
     std::function<void(int, std::string &)> mErrorMsgListener = nullptr;
 

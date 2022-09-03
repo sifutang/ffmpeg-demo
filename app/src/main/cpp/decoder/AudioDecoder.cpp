@@ -142,6 +142,8 @@ void AudioDecoder::avSync(AVFrame *frame) {
     }
     // s -> us
     pts = pts * (int64_t)(av_q2d(mTimeBase) * 1000 * 1000);
+    mLastPts = pts;
+
     int64_t elapsedTime;
     if (mStartTime < 0) {
         mStartTime = av_gettime();
@@ -149,10 +151,15 @@ void AudioDecoder::avSync(AVFrame *frame) {
     } else {
         elapsedTime = av_gettime() - mStartTime;
     }
+
     int64_t diff = pts - elapsedTime;
     diff = FFMIN(diff, DELAY_THRESHOLD);
-    LOGI("[audio] avSync, pts: %" PRId64 ", elapsedTime: %" PRId64 " diff: %" PRId64 "ms", pts, elapsedTime, (diff / 1000))
+    LOGI("[audio] avSync, pts: %" PRId64 "ms, diff: %" PRId64 "ms", (pts / 1000), (diff / 1000))
     if (diff > 0) {
         av_usleep(diff);
     }
+}
+
+double AudioDecoder::getDuration() {
+    return mDuration;
 }

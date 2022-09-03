@@ -9,7 +9,6 @@ import android.media.AudioTrack
 import android.media.audiofx.Visualizer
 import android.opengl.GLES20
 import android.opengl.GLSurfaceView
-import android.os.SystemClock
 import android.util.Log
 import android.view.Surface
 import com.xyq.ffmpegdemo.render.*
@@ -28,6 +27,15 @@ class FFPlayer(context: Context,
         private const val TAG = "FFPlayer"
     }
 
+    enum class State {
+        IDLE,
+        INIT,
+        PREPARE,
+        START,
+        STOP,
+        RELEASE
+    }
+
     private var mNativePtr = -1L
 
     private var mSurfaceWidth = -1
@@ -43,15 +51,17 @@ class FFPlayer(context: Context,
 
     private var mSurface: Surface? = null
 
-    interface FFPlayerStateListener {
+    private var mState = State.IDLE
 
-        fun onCompleted()
+    interface FFPlayerListener {
+        fun onProgress(timestamp: Double)
     }
 
-    private var mFFPlayerStateListener: FFPlayerStateListener? = null
+    private var mFFPlayerListener: FFPlayerListener? = null
 
     init {
         mNativePtr = nativeInit()
+        mState = State.INIT
 
         // 默认ffmpeg使用硬解
         mDrawer = CameraDrawer(context)
@@ -75,7 +85,7 @@ class FFPlayer(context: Context,
     }
 
     override fun onDrawFrame(gl: GL10?) {
-        GLES20.glClearColor(0f, 0f, 0f, 0f)
+        GLES20.glClearColor(23f / 255, 23f / 255, 23f / 255, 0f)
         GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT)
         mDrawer?.draw()
     }
@@ -84,6 +94,10 @@ class FFPlayer(context: Context,
         if (mDrawer is CameraDrawer) {
             (mDrawer as CameraDrawer).setFilterProgress(value)
         }
+    }
+
+    fun setListener(listener: FFPlayerListener?) {
+        mFFPlayerListener = listener
     }
 
     fun prepare(path: String) {
@@ -104,10 +118,19 @@ class FFPlayer(context: Context,
             mSurface = Surface(st)
         }
         nativePrepare(mNativePtr, path, mSurface)
+        mState = State.PREPARE
+    }
+
+    fun getDuration(): Double {
+        if (mState < State.PREPARE) {
+            throw IllegalStateException("not prepared")
+        }
+        return nativeGetDuration(mNativePtr)
     }
 
     fun start() {
         nativeStart(mNativePtr)
+        mState = State.START
     }
 
     fun stop() {
@@ -123,6 +146,7 @@ class FFPlayer(context: Context,
         audioTrack?.release()
 
         nativeStop(mNativePtr)
+        mState = State.STOP
     }
 
     fun release() {
@@ -130,6 +154,7 @@ class FFPlayer(context: Context,
         mNativePtr = -1
         mSurface?.release()
         mDrawer?.release()
+        mState = State.RELEASE
     }
 
     private fun initAudioTrack() {
@@ -219,24 +244,22 @@ class FFPlayer(context: Context,
         initAudioVisualizer()
     }
 
-    var totalSize = 0
-    private fun onNative_audioFrameArrived(buffer: ByteArray?, size: Int) {
-        val start = SystemClock.uptimeMillis()
+    /**
+     * buffer: audio sample
+     * size: audio size
+     * timestamp: ms
+     */
+    private fun onNative_audioFrameArrived(buffer: ByteArray?, size: Int, timestamp: Double) {
         buffer?.apply {
-            val code = mAudioTrack?.write(buffer, 0, size)
-            val consume = SystemClock.uptimeMillis() - start
-            totalSize += size
-
-            if (consume > 0) {
-                Log.e(TAG, "onNative_audioFrameArrived, size: $size, consume: ${consume}, code: $code, totalSize: $totalSize")
-                totalSize = 0
-            } else {
-                Log.i(TAG, "onNative_audioFrameArrived, size: $size, consume: ${consume}, code: $code")
-            }
+            val code = mAudioTrack?.write(buffer, 0, size, AudioTrack.WRITE_NON_BLOCKING)
+            Log.i(TAG, "onNative_audioFrameArrived, size: $size, timestamp: ${timestamp}ms, code: $code")
+            mFFPlayerListener?.onProgress(timestamp)
         }
     }
 
     private external fun nativeInit(): Long
+
+    private external fun nativeGetDuration(handle: Long): Double
 
     private external fun nativePrepare(handle: Long, path: String, surface: Surface?): Boolean
 

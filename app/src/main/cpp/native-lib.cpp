@@ -50,3 +50,12 @@ Java_com_xyq_ffmpegdemo_player_FFPlayer_nativeRelease(JNIEnv *env, jobject thiz,
     auto *player = reinterpret_cast<FFMpegPlayer *>(handle);
     delete player;
 }
+extern "C"
+JNIEXPORT jdouble JNICALL
+Java_com_xyq_ffmpegdemo_player_FFPlayer_nativeGetDuration(JNIEnv *env, jobject thiz, jlong handle) {
+    auto *player = reinterpret_cast<FFMpegPlayer *>(handle);
+    if (player == nullptr) {
+        return 0;
+    }
+    return player->getDuration();
+}

@@ -17,6 +17,8 @@ public:
     AudioDecoder(int index, AVFormatContext *ftx);
     ~AudioDecoder();
 
+    virtual double getDuration() override;
+
     virtual bool prepare() override;
 
     virtual int decode(AVPacket *packet) override;
@@ -25,6 +27,7 @@ public:
 
     virtual void release() override;
 
+    int64_t mLastPts = 0;
     int mDataSize = 0;
     uint8_t *mAudioBuffer = nullptr;
 
