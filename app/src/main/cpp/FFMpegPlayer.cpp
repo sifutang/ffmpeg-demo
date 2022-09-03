@@ -98,10 +98,6 @@ bool FFMpegPlayer::prepare(JNIEnv *env, std::string &path, jobject surface) {
     }
     mIsRunning = videoPrepared || audioPrePared;
     LOGI("videoPrepared: %d, audioPrePared: %d", videoPrepared, audioPrePared)
-
-    // todo 默认音频同步视频
-    if (videoPrepared && audioPrePared) {
-    }
     return mIsRunning;
 }
 
@@ -243,7 +239,7 @@ void FFMpegPlayer::doRender(JNIEnv *env, AVFrame *avFrame) {
     } else if (avFrame->format == AV_SAMPLE_FMT_FLTP) {
         if (mAudioDecoder) {
             int dataSize = mAudioDecoder->mDataSize;
-            double timestamp = mAudioDecoder->mLastPts / 1000;
+            double timestamp = mAudioDecoder->mLastPts;
             if (dataSize > 0) {
                 auto jByteArray = env->NewByteArray(dataSize);
                 env->SetByteArrayRegion(jByteArray, 0, dataSize, reinterpret_cast<const jbyte *>(mAudioDecoder->mAudioBuffer));

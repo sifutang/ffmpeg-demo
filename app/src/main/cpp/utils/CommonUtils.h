@@ -3,7 +3,7 @@
 
 #include <sys/time.h>
 
-int64_t getCurrentTimeMs() {
+static int64_t getCurrentTimeMs() {
     struct timeval time;
     gettimeofday(&time, nullptr);
     return time.tv_sec * 1000.0 + time.tv_usec / 1000.0;

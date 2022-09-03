@@ -53,6 +53,8 @@ class FFPlayer(context: Context,
 
     private var mState = State.IDLE
 
+    private var mDuration = -1.0
+
     interface FFPlayerListener {
         fun onProgress(timestamp: Double)
     }
@@ -119,13 +121,19 @@ class FFPlayer(context: Context,
         }
         nativePrepare(mNativePtr, path, mSurface)
         mState = State.PREPARE
+
+        mDuration = getDuration()
     }
 
     fun getDuration(): Double {
         if (mState < State.PREPARE) {
             throw IllegalStateException("not prepared")
         }
-        return nativeGetDuration(mNativePtr)
+
+        if (mDuration < 0) {
+            mDuration = nativeGetDuration(mNativePtr)
+        }
+        return mDuration
     }
 
     fun start() {
@@ -184,7 +192,6 @@ class FFPlayer(context: Context,
             }
 
             override fun onFftDataCapture(visualizer: Visualizer?, fft: ByteArray?, samplingRate: Int) {
-                Log.i(TAG, "onFftDataCapture: samplingRate: $samplingRate, fft size: ${fft?.size}")
                 if (fft != null) {
                     val n = fft.size
                     val magnitudes = FloatArray(n / 2 + 1)

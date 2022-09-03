@@ -1,5 +1,6 @@
 #include "AudioDecoder.h"
 #include "../utils/Logger.h"
+#include "../utils/CommonUtils.h"
 
 AudioDecoder::AudioDecoder(int index, AVFormatContext *ftx): BaseDecoder(index, ftx) {
     LOGI("AudioDecoder")
@@ -140,23 +141,24 @@ void AudioDecoder::avSync(AVFrame *frame) {
         pts = 0;
         LOGE("AV_NOPTS_VALUE")
     }
-    // s -> us
-    pts = pts * (int64_t)(av_q2d(mTimeBase) * 1000 * 1000);
+    // s -> ms
+    pts = (int64_t)(pts * av_q2d(mTimeBase) * 1000);
     mLastPts = pts;
 
-    int64_t elapsedTime;
+    int64_t elapsedTimeMs;
     if (mStartTime < 0) {
-        mStartTime = av_gettime();
-        elapsedTime = 0;
+        mStartTime = getCurrentTimeMs();
+        elapsedTimeMs = 0;
     } else {
-        elapsedTime = av_gettime() - mStartTime;
+        int64_t cur = getCurrentTimeMs();
+        elapsedTimeMs = cur - mStartTime;
     }
 
-    int64_t diff = pts - elapsedTime;
+    int64_t diff = pts - elapsedTimeMs;
     diff = FFMIN(diff, DELAY_THRESHOLD);
-    LOGI("[audio] avSync, pts: %" PRId64 "ms, diff: %" PRId64 "ms", (pts / 1000), (diff / 1000))
+    LOGI("[audio] avSync, pts: %" PRId64 "ms, diff: %" PRId64 "ms", pts, diff)
     if (diff > 0) {
-        av_usleep(diff);
+        av_usleep(diff * 1000);
     }
 }
 

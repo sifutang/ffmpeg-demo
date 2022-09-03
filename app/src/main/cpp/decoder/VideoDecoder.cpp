@@ -250,21 +250,21 @@ void VideoDecoder::avSync(AVFrame *frame) {
     } else if (frame->pts != AV_NOPTS_VALUE) {
         pts = frame->pts;
     }
-    // s -> us
-    pts = pts * (int64_t)(av_q2d(mTimeBase) * 1000 * 1000);
+    // s -> ms
+    pts = (int64_t)(pts * av_q2d(mTimeBase) * 1000);
 
-    int64_t elapsedTime;
+    int64_t elapsedTimeMs;
     if (mStartTime < 0) {
-        mStartTime = av_gettime();
-        elapsedTime = 0;
+        mStartTime = getCurrentTimeMs();
+        elapsedTimeMs = 0;
     } else {
-        elapsedTime = av_gettime() - mStartTime;
+        elapsedTimeMs = getCurrentTimeMs() - mStartTime;
     }
 
-    int64_t diff = pts - elapsedTime;
+    int64_t diff = pts - elapsedTimeMs;
     diff = FFMIN(diff, DELAY_THRESHOLD);
-    LOGI("[video] avSync, pts: %" PRId64 "ms, diff: %" PRId64 "ms", (pts / 1000), (diff / 1000))
+    LOGI("[video] avSync, pts: %" PRId64 "ms, diff: %" PRId64 "ms", pts, diff)
     if (diff > 0) {
-        av_usleep(diff);
+        av_usleep(diff * 1000);
     }
 }

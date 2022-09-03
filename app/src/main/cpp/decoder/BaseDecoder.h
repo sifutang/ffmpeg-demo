@@ -10,7 +10,7 @@ extern "C" {
 #include "libavutil/time.h"
 }
 
-#define DELAY_THRESHOLD 100 * 1000 // 100ms
+#define DELAY_THRESHOLD 100 // 100ms
 
 class BaseDecoder {
 
