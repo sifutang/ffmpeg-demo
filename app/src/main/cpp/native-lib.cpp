@@ -59,3 +59,13 @@ Java_com_xyq_ffmpegdemo_player_FFPlayer_nativeGetDuration(JNIEnv *env, jobject t
     }
     return player->getDuration();
 }
+extern "C"
+JNIEXPORT jboolean JNICALL
+Java_com_xyq_ffmpegdemo_player_FFPlayer_nativeSeek(JNIEnv *env, jobject thiz, jlong handle,
+                                                   jdouble position) {
+    auto *player = reinterpret_cast<FFMpegPlayer *>(handle);
+    if (player == nullptr) {
+        return false;
+    }
+    return player->seek(position);
+}

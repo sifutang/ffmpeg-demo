@@ -125,6 +125,9 @@ class FFPlayer(context: Context,
         mDuration = getDuration()
     }
 
+    /**
+     * get file duration, time is s
+     */
     fun getDuration(): Double {
         if (mState < State.PREPARE) {
             throw IllegalStateException("not prepared")
@@ -134,6 +137,17 @@ class FFPlayer(context: Context,
             mDuration = nativeGetDuration(mNativePtr)
         }
         return mDuration
+    }
+
+    /**
+     * seek to position, time is s
+     */
+    fun seek(position: Double): Boolean {
+        if (mState < State.PREPARE) {
+            return false
+        }
+
+        return nativeSeek(mNativePtr, position)
     }
 
     fun start() {
@@ -256,17 +270,23 @@ class FFPlayer(context: Context,
      * size: audio size
      * timestamp: ms
      */
-    private fun onNative_audioFrameArrived(buffer: ByteArray?, size: Int, timestamp: Double) {
+    private fun onNative_audioFrameArrived(buffer: ByteArray?, size: Int, timestamp: Double, flush: Boolean) {
         buffer?.apply {
+            if (flush) {
+                mAudioTrack?.flush()
+                Log.e(TAG, "onNative_audioFrameArrived: flush audio track")
+            }
             val code = mAudioTrack?.write(buffer, 0, size, AudioTrack.WRITE_NON_BLOCKING)
             Log.i(TAG, "onNative_audioFrameArrived, size: $size, timestamp: ${timestamp}ms, code: $code")
-            mFFPlayerListener?.onProgress(timestamp)
+            mFFPlayerListener?.onProgress(timestamp / 1000)
         }
     }
 
     private external fun nativeInit(): Long
 
     private external fun nativeGetDuration(handle: Long): Double
+
+    private external fun nativeSeek(handle: Long, position: Double): Boolean
 
     private external fun nativePrepare(handle: Long, path: String, surface: Surface?): Boolean
 

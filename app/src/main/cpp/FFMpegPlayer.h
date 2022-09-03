@@ -54,6 +54,8 @@ public:
 
     void stop();
 
+    bool seek(double timeS);
+
     double getDuration();
 
 private:
@@ -65,6 +67,9 @@ private:
 
     pthread_cond_t mCond{};
     pthread_mutex_t mMutex{};
+
+    volatile double mVideoSeekPos = -1;
+    volatile double mAudioSeekPos = -1;
 
     std::thread *mVideoThread = nullptr;
     AVPacketQueue *mVideoPacketQueue = nullptr;
@@ -78,9 +83,19 @@ private:
 
     void doRender(JNIEnv *env, AVFrame *avFrame);
 
+    int readAvPacket();
+
     void VideoDecodeLoop();
 
     void AudioDecodeLoop();
+
+    void lock();
+
+    void unlock();
+
+    void wait();
+
+    void wakeup();
 };
 
 

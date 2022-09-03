@@ -5,6 +5,7 @@ import android.content.pm.PackageManager
 import android.os.*
 import android.util.Log
 import android.view.MotionEvent
+import android.widget.SeekBar
 import androidx.appcompat.app.AppCompatActivity
 import com.xyq.ffmpegdemo.databinding.ActivityMainBinding
 import com.xyq.ffmpegdemo.player.FFPlayer
@@ -21,25 +22,26 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private lateinit var binding: ActivityMainBinding
+    private lateinit var mBinding: ActivityMainBinding
     private lateinit var mPlayer: FFPlayer
-    private var hasPermission = false
+    private var mHasPermission = false
+    private var mIsSeeking = false
+    private var mDuration = -1.0
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        binding = ActivityMainBinding.inflate(layoutInflater)
-        setContentView(binding.root)
-        binding.seekBar.isEnabled = false
+        mBinding = ActivityMainBinding.inflate(layoutInflater)
+        setContentView(mBinding.root)
+        initViews()
 
-        hasPermission = checkPermission()
-
-        mPlayer = FFPlayer(applicationContext, binding.glSurfaceView, binding.audioVisualizeView)
+        mHasPermission = checkPermission()
+        mPlayer = FFPlayer(applicationContext, mBinding.glSurfaceView, mBinding.audioVisualizeView)
     }
 
     override fun onResume() {
         super.onResume()
-        if (hasPermission) {
+        if (mHasPermission) {
             startPlay()
         }
     }
@@ -61,7 +63,7 @@ class MainActivity : AppCompatActivity() {
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == 1000 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-            hasPermission = true
+            mHasPermission = true
             Log.i(TAG, "onRequestPermissionsResult:")
         }
     }
@@ -78,33 +80,72 @@ class MainActivity : AppCompatActivity() {
         return true
     }
 
+    private fun initViews() {
+        mBinding.seekBar.isEnabled = false
+        mBinding.seekBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                if (fromUser && mDuration > 0) {
+                    val timestamp = progress / 100f * mDuration
+                    mBinding.tvTimer.text = calculateTime(timestamp.toInt())
+                }
+            }
+
+            override fun onStartTrackingTouch(seekBar: SeekBar?) {
+                Log.e(TAG, "onStartTrackingTouch: ")
+                mIsSeeking = true
+            }
+
+            override fun onStopTrackingTouch(seekBar: SeekBar?) {
+                seekBar?.let {
+                    val timestamp = seekBar.progress / 100f * mDuration
+                    Log.e(TAG, "onStopTrackingTouch: progress: ${seekBar.progress}, timestamp: $timestamp")
+                    mPlayer.seek(timestamp)
+                }
+                mIsSeeking = false
+            }
+        })
+    }
+
     private fun startPlay() {
-        binding.seekBar.isEnabled = true
-        binding.seekBar.progress = 0
+        mBinding.seekBar.isEnabled = true
+        mBinding.seekBar.progress = 0
         thread {
             Log.i(TAG, "startPlay: start")
-//            val testVideo = "oceans.mp4"
-            val testVideo = "av_sync_test.mp4"
+            val testVideo = "oceans.mp4"
+//            val testVideo = "av_sync_test.mp4"
             val path = cacheDir.absolutePath + "/$testVideo"
             FileUtils.copyFile2Path(assets.open(testVideo), path)
 
             mPlayer.prepare(path)
-            val duration = mPlayer.getDuration()
-            Log.i(TAG, "startPlay: duration: $duration")
+            mDuration = mPlayer.getDuration()
+            Log.i(TAG, "startPlay: duration: $mDuration")
 
             mPlayer.setListener(object : FFPlayer.FFPlayerListener {
 
                 override fun onProgress(timestamp: Double) {
                     runOnUiThread {
                         // seek bar: [0, 100]
-                        val curTimeS = timestamp / 1000
-                        binding.seekBar.progress = ((curTimeS / duration) * 100).toInt()
+                        if (!mIsSeeking) {
+                            mBinding.seekBar.progress = ((timestamp / mDuration) * 100).toInt()
+                            mBinding.tvTimer.text = calculateTime(timestamp.toInt())
+                        }
                     }
                 }
 
             })
             mPlayer.start()
         }
+    }
+
+    private fun calculateTime(timeS: Int): String {
+        val hour = timeS / 3600
+        val minute = timeS / 60
+        val second = timeS - hour * 3600 - minute * 60
+        return "${alignment(hour)}:${alignment(minute)}:${alignment(second)}"
+    }
+
+    private fun alignment(time: Int): String {
+        return if (time > 9) "$time" else "0$time"
     }
 
     private fun stopPlay() {
@@ -114,7 +155,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
         if (event.action == MotionEvent.ACTION_MOVE) {
-            mPlayer.setFilterProgress(event.x / binding.glSurfaceView.width)
+            mPlayer.setFilterProgress(event.x / mBinding.glSurfaceView.width)
         }
         return super.onTouchEvent(event)
     }

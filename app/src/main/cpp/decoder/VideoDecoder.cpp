@@ -122,7 +122,7 @@ bool VideoDecoder::prepare() {
     }
 
     mAvFrame = av_frame_alloc();
-    mStartTime = -1;
+    mStartTimeMs = -1;
     LOGI("codec name: %s", mVideoCodec->name)
     return true;
 }
@@ -198,7 +198,7 @@ int VideoDecoder::decode(AVPacket *avPacket) {
 }
 
 void VideoDecoder::release() {
-    mStartTime = -1;
+    mStartTimeMs = -1;
     if (mAvFrame != nullptr) {
         av_frame_free(&mAvFrame);
         av_freep(&mAvFrame);
@@ -244,27 +244,41 @@ double VideoDecoder::getDuration() {
 }
 
 void VideoDecoder::avSync(AVFrame *frame) {
-    int64_t pts = 0;
     if (frame->pkt_dts != AV_NOPTS_VALUE) {
-        pts = frame->pkt_dts;
+        mCurTimeStampMs = frame->pkt_dts;
     } else if (frame->pts != AV_NOPTS_VALUE) {
-        pts = frame->pts;
+        mCurTimeStampMs = frame->pts;
     }
     // s -> ms
-    pts = (int64_t)(pts * av_q2d(mTimeBase) * 1000);
+    mCurTimeStampMs = (int64_t)(mCurTimeStampMs * av_q2d(mTimeBase) * 1000);
 
     int64_t elapsedTimeMs;
-    if (mStartTime < 0) {
-        mStartTime = getCurrentTimeMs();
+    if (mStartTimeMs < 0) {
+        mStartTimeMs = getCurrentTimeMs();
         elapsedTimeMs = 0;
     } else {
-        elapsedTimeMs = getCurrentTimeMs() - mStartTime;
+        elapsedTimeMs = getCurrentTimeMs() - mStartTimeMs;
     }
 
-    int64_t diff = pts - elapsedTimeMs;
+    if (mFixStartTime) {
+        mStartTimeMs = getCurrentTimeMs() - mCurTimeStampMs;
+        mFixStartTime = false;
+    }
+
+    int64_t diff = mCurTimeStampMs - elapsedTimeMs;
     diff = FFMIN(diff, DELAY_THRESHOLD);
-    LOGI("[video] avSync, pts: %" PRId64 "ms, diff: %" PRId64 "ms", pts, diff)
+    LOGI("[video] avSync, pts: %" PRId64 "ms, diff: %" PRId64 "ms", mCurTimeStampMs, diff)
     if (diff > 0) {
         av_usleep(diff * 1000);
     }
+}
+
+int VideoDecoder::seek(double pos) {
+    int64_t seekPos = av_rescale_q((int64_t)(pos * AV_TIME_BASE), AV_TIME_BASE_Q, mTimeBase);
+    int ret = avformat_seek_file(mFtx, getStreamIndex(),
+                                 INT64_MIN, seekPos, INT64_MAX, AVSEEK_FLAG_BACKWARD | AVSEEK_FLAG_FRAME);
+    avcodec_flush_buffers(mVideoCodecContext);
+    LOGE("[video] seek to: %f, seekPos: %" PRId64 ", ret: %d", pos, seekPos, ret)
+    mFixStartTime = true;
+    return ret;
 }

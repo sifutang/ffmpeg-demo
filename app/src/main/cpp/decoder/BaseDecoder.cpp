@@ -42,3 +42,11 @@ int BaseDecoder::getStreamIndex() const {
 
 void BaseDecoder::avSync(AVFrame *frame) {
 }
+
+AVRational BaseDecoder::getTimebase() const {
+    return mTimeBase;
+}
+
+int BaseDecoder::seek(double pos) {
+    return -1;
+}

@@ -26,7 +26,7 @@ void FFMpegPlayer::init(JNIEnv *env, jobject thiz) {
     mPlayerJni.onVideoFrameArrived = env->GetMethodID(jclazz, "onNative_videoFrameArrived", "(II[B[B[B)V");
 
     mPlayerJni.onAudioPrepared = env->GetMethodID(jclazz, "onNative_audioTrackPrepared", "()V");
-    mPlayerJni.onAudioFrameArrived = env->GetMethodID(jclazz, "onNative_audioFrameArrived", "([BID)V");
+    mPlayerJni.onAudioFrameArrived = env->GetMethodID(jclazz, "onNative_audioFrameArrived", "([BIDZ)V");
 }
 
 bool FFMpegPlayer::prepare(JNIEnv *env, std::string &path, jobject surface) {
@@ -56,12 +56,6 @@ bool FFMpegPlayer::prepare(JNIEnv *env, std::string &path, jobject surface) {
         } else if (mFtx->streams[i]->codecpar->codec_type == AVMEDIA_TYPE_AUDIO) {
             audioIndex = i;
         }
-    }
-
-    if (videoIndex < 0) {
-        std::string msg = "not find video stream";
-        LOGE("avformat_find_stream_info, err: %s", msg.c_str())
-        return false;
     }
 
     mHasAbort = false;
@@ -103,55 +97,30 @@ bool FFMpegPlayer::prepare(JNIEnv *env, std::string &path, jobject surface) {
 
 void FFMpegPlayer::start() {
     while (mIsRunning) {
-        AVPacket *avPacket = av_packet_alloc();
-        int ret = av_read_frame(mFtx, avPacket);
-        if (ret != 0) {
-            LOGE("read packet...end")
-            av_packet_unref(avPacket);
+        if (readAvPacket() != 0) {
             break;
-        }
-
-        if (mVideoDecoder && mVideoPacketQueue && avPacket->stream_index == mVideoDecoder->getStreamIndex()) {
-            while (mVideoPacketQueue->isFull()) {
-                mVideoPacketQueue->wait(10);
-                LOGE("video queue is full, wait 10ms")
-            }
-            mVideoPacketQueue->push(avPacket);
-        } else if (mAudioDecoder && mAudioPacketQueue && avPacket->stream_index == mAudioDecoder->getStreamIndex()) {
-            while (mAudioPacketQueue->isFull()) {
-                mAudioPacketQueue->wait(10);
-                LOGE("audio queue is full, wait 10ms")
-            }
-            mAudioPacketQueue->push(avPacket);
-        } else {
-            av_packet_free(&avPacket);
-            av_freep(&avPacket);
-            LOGI("read packet...other")
         }
     }
 
     if (mIsRunning) {
-        LOGI("decode...end")
+        LOGI("read packet...end")
         mIsRunning = false;
     } else {
-        LOGI("decode...abort")
+        LOGI("read packet...abort")
     }
 
-    pthread_mutex_lock(&mMutex);
-    pthread_cond_signal(&mCond);
-    pthread_mutex_unlock(&mMutex);
+    wakeup();
 }
 
 void FFMpegPlayer::stop() {
     LOGE("stop, mIsRunning: %d", mIsRunning)
     if (mIsRunning) {
         mIsRunning = false;
-        pthread_mutex_lock(&mMutex);
-        pthread_cond_wait(&mCond, &mMutex);
-        pthread_mutex_unlock(&mMutex);
+        wait();
     }
 
     mHasAbort = true;
+    mVideoSeekPos = -1;
     LOGE("stop done")
 
     if (mVideoThread != nullptr) {
@@ -239,18 +208,49 @@ void FFMpegPlayer::doRender(JNIEnv *env, AVFrame *avFrame) {
     } else if (avFrame->format == AV_SAMPLE_FMT_FLTP) {
         if (mAudioDecoder) {
             int dataSize = mAudioDecoder->mDataSize;
-            double timestamp = mAudioDecoder->mLastPts;
+            double timestamp = mAudioDecoder->mCurTimeStampMs;
+            bool flushRender = mAudioDecoder->mNeedFlushRender;
             if (dataSize > 0) {
                 auto jByteArray = env->NewByteArray(dataSize);
                 env->SetByteArrayRegion(jByteArray, 0, dataSize, reinterpret_cast<const jbyte *>(mAudioDecoder->mAudioBuffer));
 
                 if (mPlayerJni.instance != nullptr && mPlayerJni.onAudioFrameArrived != nullptr) {
-                    env->CallVoidMethod(mPlayerJni.instance, mPlayerJni.onAudioFrameArrived, jByteArray, dataSize, timestamp);
+                    env->CallVoidMethod(mPlayerJni.instance, mPlayerJni.onAudioFrameArrived, jByteArray, dataSize, timestamp, flushRender);
                 }
                 env->DeleteLocalRef(jByteArray);
             }
         }
     }
+}
+
+int FFMpegPlayer::readAvPacket() {
+    AVPacket *avPacket = av_packet_alloc();
+    int ret = av_read_frame(mFtx, avPacket);
+    if (ret != 0) {
+        LOGE("read packet...end")
+        av_packet_unref(avPacket);
+        return -1;
+    }
+
+    if (mVideoDecoder && mVideoPacketQueue && avPacket->stream_index == mVideoDecoder->getStreamIndex() && mVideoSeekPos < 0) {
+        while (mVideoPacketQueue->isFull()) {
+            mVideoPacketQueue->wait(10);
+            LOGE("video queue is full, wait 10ms")
+        }
+        mVideoPacketQueue->push(avPacket);
+    } else if (mAudioDecoder && mAudioPacketQueue && avPacket->stream_index == mAudioDecoder->getStreamIndex() && mAudioSeekPos < 0) {
+        while (mAudioPacketQueue->isFull()) {
+            mAudioPacketQueue->wait(10);
+            LOGE("audio queue is full, wait 10ms")
+        }
+        mAudioPacketQueue->push(avPacket);
+        LOGE("push audio packet")
+    } else {
+        av_packet_free(&avPacket);
+        av_freep(&avPacket);
+        LOGI("read packet...other")
+    }
+    return 0;
 }
 
 void FFMpegPlayer::VideoDecodeLoop() {
@@ -274,6 +274,12 @@ void FFMpegPlayer::VideoDecodeLoop() {
     });
 
     while (true) {
+        if (mVideoSeekPos > 0) {
+            mVideoPacketQueue->clear();
+            mVideoDecoder->seek(mVideoSeekPos);
+            mVideoSeekPos = -1;
+        }
+
         while (!mHasAbort && mVideoPacketQueue->isEmpty()) {
             LOGE("[video] no packet, wait...")
             mVideoPacketQueue->wait();
@@ -326,9 +332,16 @@ void FFMpegPlayer::AudioDecodeLoop() {
     });
 
     while (true) {
-       while (!mHasAbort && mAudioPacketQueue->isEmpty()) {
-            LOGE("[audio] no packet, wait...")
-            mAudioPacketQueue->wait();
+        if (mAudioSeekPos > 0) {
+            mAudioPacketQueue->clear();
+            mAudioDecoder->seek(mAudioSeekPos);
+            mAudioSeekPos = -1;
+            LOGE("clear audio queue via seek")
+        }
+
+        while (!mHasAbort && mAudioPacketQueue->isEmpty()) {
+             LOGE("[audio] no packet, wait...")
+             mAudioPacketQueue->wait();
         }
 
         if (mHasAbort) {
@@ -366,4 +379,39 @@ double FFMpegPlayer::getDuration() {
         return mVideoDecoder->getDuration();
     }
     return 0;
+}
+
+bool FFMpegPlayer::seek(double timeS) {
+    bool ret = true;
+    mVideoSeekPos = timeS;
+    mAudioSeekPos = timeS;
+    // 先clear queue
+    if (mVideoPacketQueue != nullptr) {
+        mVideoPacketQueue->clear();
+    }
+    if (mAudioPacketQueue != nullptr) {
+        mAudioPacketQueue->clear();
+    }
+    LOGI("seek to: %f", timeS)
+    return ret;
+}
+
+void FFMpegPlayer::lock() {
+    pthread_mutex_lock(&mMutex);
+}
+
+void FFMpegPlayer::unlock() {
+    pthread_mutex_unlock(&mMutex);
+}
+
+void FFMpegPlayer::wakeup() {
+    pthread_mutex_lock(&mMutex);
+    pthread_cond_signal(&mCond);
+    pthread_mutex_unlock(&mMutex);
+}
+
+void FFMpegPlayer::wait() {
+    pthread_mutex_lock(&mMutex);
+    pthread_cond_wait(&mCond, &mMutex);
+    pthread_mutex_unlock(&mMutex);
 }

@@ -79,5 +79,6 @@ void AVPacketQueue::clear() {
         mQueue.pop();
     }
     pthread_mutex_unlock(&mMutex);
+    notify();
 }
 

@@ -15,4 +15,6 @@ just for study ffmpeg, base5.0.1
 
 [Android FFmpeg系列06--音频可视化](https://mp.weixin.qq.com/s/xdHyc_E3qdOFxVjRpMxLZA)
 
-[Android FFmpeg系列07--seek]()
+[Android FFmpeg系列07--音画同步]()
+
+[Android FFmpeg系列08--seek]()

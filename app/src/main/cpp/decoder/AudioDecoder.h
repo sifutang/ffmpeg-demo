@@ -25,14 +25,21 @@ public:
 
     virtual void avSync(AVFrame *frame) override;
 
+    virtual int seek(double pos) override;
+
     virtual void release() override;
 
-    int64_t mLastPts = 0;
+    int64_t mCurTimeStampMs = 0;
+    // seek后需要恢复起始时间
+    bool mFixStartTime = false;
+    // todo need opt
+    bool mNeedFlushRender = false;
+
     int mDataSize = 0;
     uint8_t *mAudioBuffer = nullptr;
 
 private:
-    int64_t mStartTime = -1;
+    int64_t mStartTimeMs = -1;
 
     const AVCodec *mAudioCodec = nullptr;
 

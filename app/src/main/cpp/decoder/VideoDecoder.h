@@ -32,13 +32,19 @@ public:
 
     virtual void avSync(AVFrame *frame) override;
 
+    virtual int seek(double pos) override;
+
     virtual void release() override;
 
 private:
     int mWidth = -1;
     int mHeight = -1;
 
-    int64_t mStartTime = -1;
+    int64_t mStartTimeMs = -1;
+    int64_t mCurTimeStampMs = 0;
+
+    // seek后需要恢复起始时间
+    bool mFixStartTime = false;
 
     bool mUseHwDecode = false;
 

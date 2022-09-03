@@ -26,9 +26,13 @@ public:
 
     virtual void avSync(AVFrame *frame);
 
+    virtual int seek(double pos);
+
     virtual void release();
 
     int getStreamIndex() const;
+
+    AVRational getTimebase() const;
 
     void setErrorMsgListener(std::function<void(int, std::string &)> listener);
 
