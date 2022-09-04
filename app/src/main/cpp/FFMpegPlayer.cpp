@@ -90,16 +90,20 @@ bool FFMpegPlayer::prepare(JNIEnv *env, std::string &path, jobject surface) {
             env->CallVoidMethod(mPlayerJni.instance, mPlayerJni.onAudioPrepared);
         }
     }
-    mIsRunning = videoPrepared || audioPrePared;
+    bool prepared = videoPrepared || audioPrePared;
     LOGI("videoPrepared: %d, audioPrePared: %d", videoPrepared, audioPrePared)
-    return mIsRunning;
+    if (prepared) {
+        mPlayerState = PREPARE;
+    }
+    return prepared;
 }
 
 void FFMpegPlayer::start() {
-    LOGI("FFMpegPlayer::start")
-    if (!mIsRunning) { // prepared failed
+    LOGI("FFMpegPlayer::start, state: %d", mPlayerState)
+    if (mPlayerState != PREPARE) {  // prepared failed
         return;
     }
+    mPlayerState = START;
     if (mReadPacketThread == nullptr) {
         mReadPacketThread = new std::thread(&FFMpegPlayer::ReadPacketLoop, this);
     }
@@ -108,7 +112,7 @@ void FFMpegPlayer::start() {
 void FFMpegPlayer::stop() {
     LOGI("FFMpegPlayer::stop")
     // wakeup read packet thread
-    mIsRunning = false;
+    mPlayerState = STOP;
     wakeup();
 
     if (mReadPacketThread != nullptr) {
@@ -229,7 +233,7 @@ int FFMpegPlayer::readAvPacket() {
     AVPacket *avPacket = av_packet_alloc();
     int ret = av_read_frame(mFtx, avPacket);
     if (ret != 0) {
-        LOGE("read packet...end")
+        LOGE("read packet...end or failed: %d", ret)
         av_packet_unref(avPacket);
         return -1;
     }
@@ -250,17 +254,18 @@ int FFMpegPlayer::readAvPacket() {
     } else {
         av_packet_free(&avPacket);
         av_freep(&avPacket);
-        LOGI("read packet...other")
     }
     return 0;
 }
 
 void FFMpegPlayer::ReadPacketLoop() {
     LOGI("FFMpegPlayer::ReadPacketLoop start")
-    while (mIsRunning) {
+    while (mPlayerState != STOP) {
+        mPlayerState = PLAYING;
         bool isEnd = readAvPacket() != 0;
         if (isEnd) {
             LOGE("read av packet end, wait...")
+            mPlayerState = PAUSE;
             wait();
         }
     }

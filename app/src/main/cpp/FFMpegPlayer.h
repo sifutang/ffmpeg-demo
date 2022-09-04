@@ -38,6 +38,15 @@ typedef struct PlayerJniContext {
 
 } PlayerJniContext;
 
+enum PlayerState {
+    UNKNOWN,
+    PREPARE,
+    START,
+    PLAYING,
+    PAUSE,
+    STOP
+};
+
 class FFMpegPlayer {
 
 public:
@@ -62,7 +71,8 @@ private:
     JavaVM *mJvm = nullptr;
     PlayerJniContext mPlayerJni{};
 
-    bool mIsRunning = false;
+    PlayerState mPlayerState = UNKNOWN;
+
     bool mHasAbort = false;
 
     pthread_cond_t mCond{};
