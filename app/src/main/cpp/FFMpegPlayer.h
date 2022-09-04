@@ -71,6 +71,8 @@ private:
     volatile double mVideoSeekPos = -1;
     volatile double mAudioSeekPos = -1;
 
+    std::thread *mReadPacketThread = nullptr;
+
     std::thread *mVideoThread = nullptr;
     AVPacketQueue *mVideoPacketQueue = nullptr;
     VideoDecoder *mVideoDecoder = nullptr;
@@ -84,6 +86,8 @@ private:
     void doRender(JNIEnv *env, AVFrame *avFrame);
 
     int readAvPacket();
+
+    void ReadPacketLoop();
 
     void VideoDecodeLoop();
 

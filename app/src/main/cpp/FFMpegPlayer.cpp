@@ -96,33 +96,34 @@ bool FFMpegPlayer::prepare(JNIEnv *env, std::string &path, jobject surface) {
 }
 
 void FFMpegPlayer::start() {
-    while (mIsRunning) {
-        if (readAvPacket() != 0) {
-            break;
-        }
+    LOGI("FFMpegPlayer::start")
+    if (!mIsRunning) { // prepared failed
+        return;
     }
-
-    if (mIsRunning) {
-        LOGI("read packet...end")
-        mIsRunning = false;
-    } else {
-        LOGI("read packet...abort")
+    if (mReadPacketThread == nullptr) {
+        mReadPacketThread = new std::thread(&FFMpegPlayer::ReadPacketLoop, this);
     }
-
-    wakeup();
 }
 
 void FFMpegPlayer::stop() {
-    LOGE("stop, mIsRunning: %d", mIsRunning)
-    if (mIsRunning) {
-        mIsRunning = false;
-        wait();
+    LOGI("FFMpegPlayer::stop")
+    // wakeup read packet thread
+    mIsRunning = false;
+    wakeup();
+
+    if (mReadPacketThread != nullptr) {
+        LOGE("join read thread")
+        mReadPacketThread->join();
+        delete mReadPacketThread;
+        mReadPacketThread = nullptr;
+        LOGE("release read thread")
     }
 
     mHasAbort = true;
     mVideoSeekPos = -1;
-    LOGE("stop done")
+    mAudioSeekPos = -1;
 
+    // release video res
     if (mVideoThread != nullptr) {
         LOGE("join video thread")
         if (mVideoPacketQueue) {
@@ -131,27 +132,28 @@ void FFMpegPlayer::stop() {
         mVideoThread->join();
         delete mVideoThread;
         mVideoThread = nullptr;
-        LOGE("release video thread")
     }
     if (mVideoDecoder != nullptr) {
         delete mVideoDecoder;
         mVideoDecoder = nullptr;
     }
+    LOGE("release video res")
 
-   if (mAudioThread != nullptr) {
+    // release audio res
+    if (mAudioThread != nullptr) {
         LOGE("join audio thread")
-       if (mAudioPacketQueue) {
-           mAudioPacketQueue->notify();
-       }
+        if (mAudioPacketQueue) {
+            mAudioPacketQueue->notify();
+        }
         mAudioThread->join();
         delete mAudioThread;
         mAudioThread = nullptr;
-        LOGE("release audio thread")
     }
     if (mAudioDecoder != nullptr) {
         delete mAudioDecoder;
         mAudioDecoder = nullptr;
     }
+    LOGE("release audio res")
 
     if (mFtx != nullptr) {
         avformat_close_input(&mFtx);
@@ -251,6 +253,18 @@ int FFMpegPlayer::readAvPacket() {
         LOGI("read packet...other")
     }
     return 0;
+}
+
+void FFMpegPlayer::ReadPacketLoop() {
+    LOGI("FFMpegPlayer::ReadPacketLoop start")
+    while (mIsRunning) {
+        bool isEnd = readAvPacket() != 0;
+        if (isEnd) {
+            LOGE("read av packet end, wait...")
+            wait();
+        }
+    }
+    LOGI("FFMpegPlayer::ReadPacketLoop end")
 }
 
 void FFMpegPlayer::VideoDecodeLoop() {
