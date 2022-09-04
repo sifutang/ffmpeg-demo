@@ -23,18 +23,18 @@ bool AudioDecoder::prepare() {
     }
 
     // init codec context
-    mAudioCodecContext = avcodec_alloc_context3(mAudioCodec);
-    if (!mAudioCodecContext) {
+    mCodecContext = avcodec_alloc_context3(mAudioCodec);
+    if (!mCodecContext) {
         std::string msg = "[audio] codec context alloc failed";
         if (mErrorMsgListener) {
             mErrorMsgListener(-2000, msg);
         }
         return false;
     }
-    avcodec_parameters_to_context(mAudioCodecContext, params);
+    avcodec_parameters_to_context(mCodecContext, params);
 
     // open codec
-    int ret = avcodec_open2(mAudioCodecContext, mAudioCodec, nullptr);
+    int ret = avcodec_open2(mCodecContext, mAudioCodec, nullptr);
     if (ret != 0) {
         std::string msg = "[audio] codec open failed";
         if (mErrorMsgListener) {
@@ -51,16 +51,16 @@ bool AudioDecoder::prepare() {
             AV_SAMPLE_FMT_S16,
             44100,
 
-            (int64_t)mAudioCodecContext->channel_layout,
-            mAudioCodecContext->sample_fmt,
-            mAudioCodecContext->sample_rate,
+            (int64_t)mCodecContext->channel_layout,
+            mCodecContext->sample_fmt,
+            mCodecContext->sample_rate,
             0,
             nullptr
             );
     ret = swr_init(mSwrContext);
 
     LOGI("[audio] prepare, sample rate: %d, channels: %d, channel_layout: %" PRId64 ", fmt: %d, swr_init: %d",
-         mAudioCodecContext->sample_rate, mAudioCodecContext->channels, mAudioCodecContext->channel_layout, mAudioCodecContext->sample_fmt, ret);
+         mCodecContext->sample_rate, mCodecContext->channels, mCodecContext->channel_layout, mCodecContext->sample_fmt, ret);
 
     mStartTimeMs = -1;
 
@@ -68,10 +68,10 @@ bool AudioDecoder::prepare() {
 }
 
 int AudioDecoder::decode(AVPacket *avPacket) {
-    int res = avcodec_send_packet(mAudioCodecContext, avPacket);
+    int res = avcodec_send_packet(mCodecContext, avPacket);
     LOGI("[audio] avcodec_send_packet...pts: %" PRId64 ", dts: %" PRId64 ", res: %d", avPacket->pts, avPacket->dts, res)
 
-    res = avcodec_receive_frame(mAudioCodecContext, mAvFrame);
+    res = avcodec_receive_frame(mCodecContext, mAvFrame);
     if (res != 0) {
         LOGE("[audio] avcodec_receive_frame err: %d", res)
         av_frame_unref(mAvFrame);
@@ -127,10 +127,10 @@ void AudioDecoder::release() {
         LOGI("[audio] sws context...release")
     }
 
-    if (mAudioCodecContext != nullptr) {
-        avcodec_close(mAudioCodecContext);
-        avcodec_free_context(&mAudioCodecContext);
-        mAudioCodecContext = nullptr;
+    if (mCodecContext != nullptr) {
+        avcodec_close(mCodecContext);
+        avcodec_free_context(&mCodecContext);
+        mCodecContext = nullptr;
         LOGI("[audio] codec...release")
     }
 }
@@ -172,7 +172,7 @@ int AudioDecoder::seek(double pos) {
     int64_t seekPos = av_rescale_q((int64_t)(pos * AV_TIME_BASE), AV_TIME_BASE_Q, mTimeBase);
     int ret = avformat_seek_file(mFtx, getStreamIndex(),
                              INT64_MIN, seekPos, INT64_MAX, AVSEEK_FLAG_BACKWARD | AVSEEK_FLAG_FRAME);
-    avcodec_flush_buffers(mAudioCodecContext);
+    flush();
     LOGE("[audio] seek to: %f, seekPos: %" PRId64 ", ret: %d", pos, seekPos, ret)
     mFixStartTime = true;
     return ret;

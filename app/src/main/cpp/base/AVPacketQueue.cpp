@@ -1,5 +1,6 @@
 #include "AVPacketQueue.h"
 #include <ctime>
+#include "../utils/Logger.h"
 
 AVPacketQueue::AVPacketQueue(int64_t maxSize) {
     pthread_mutex_init(&mMutex, nullptr);
@@ -67,15 +68,19 @@ bool AVPacketQueue::isEmpty() {
     pthread_mutex_lock(&mMutex);
     size = (int64_t)mQueue.size();
     pthread_mutex_unlock(&mMutex);
-    return size == 0;
+    return size <= 0;
 }
 
 void AVPacketQueue::clear() {
     pthread_mutex_lock(&mMutex);
-    while (!mQueue.empty()) {
+    int64_t size = mQueue.size();
+    LOGI("clear queue, size: %" PRId64, size)
+    while (!mQueue.empty() && size > 0) {
         AVPacket *packet = mQueue.front();
-        av_packet_free(&packet);
-        av_freep(&packet);
+        if (packet != nullptr) {
+            av_packet_free(&packet);
+            av_freep(&packet);
+        }
         mQueue.pop();
     }
     pthread_mutex_unlock(&mMutex);

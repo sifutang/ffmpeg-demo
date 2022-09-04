@@ -91,28 +91,28 @@ bool VideoDecoder::prepare() {
     }
 
     // init codec context
-    mVideoCodecContext = avcodec_alloc_context3(mVideoCodec);
-    if (!mVideoCodecContext) {
+    mCodecContext = avcodec_alloc_context3(mVideoCodec);
+    if (!mCodecContext) {
         std::string msg = "codec context alloc failed";
         if (mErrorMsgListener) {
             mErrorMsgListener(-2000, msg);
         }
         return false;
     }
-    avcodec_parameters_to_context(mVideoCodecContext, params);
+    avcodec_parameters_to_context(mCodecContext, params);
 
     if (mHwDeviceCtx) {
-        mVideoCodecContext->get_format = get_hw_format;
-        mVideoCodecContext->hw_device_ctx = av_buffer_ref(mHwDeviceCtx);
+        mCodecContext->get_format = get_hw_format;
+        mCodecContext->hw_device_ctx = av_buffer_ref(mHwDeviceCtx);
 
         if (mSurface != nullptr) {
             mMediaCodecContext = av_mediacodec_alloc_context();
-            av_mediacodec_default_init(mVideoCodecContext, mMediaCodecContext, mSurface);
+            av_mediacodec_default_init(mCodecContext, mMediaCodecContext, mSurface);
         }
     }
 
     // open codec
-    int ret = avcodec_open2(mVideoCodecContext, mVideoCodec, nullptr);
+    int ret = avcodec_open2(mCodecContext, mVideoCodec, nullptr);
     if (ret != 0) {
         std::string msg = "codec open failed";
         if (mErrorMsgListener) {
@@ -128,11 +128,11 @@ bool VideoDecoder::prepare() {
 }
 
 int VideoDecoder::decode(AVPacket *avPacket) {
-    int res = avcodec_send_packet(mVideoCodecContext, avPacket);
+    int res = avcodec_send_packet(mCodecContext, avPacket);
     LOGI("[video] avcodec_send_packet...pts: %" PRId64 ", dts: %" PRId64 ", res: %d", avPacket->pts, avPacket->dts, res)
 
     do {
-        res = avcodec_receive_frame(mVideoCodecContext, mAvFrame);
+        res = avcodec_receive_frame(mCodecContext, mAvFrame);
         if (res != 0) {
             LOGE("avcodec_receive_frame err: %d", res)
         }
@@ -212,7 +212,7 @@ void VideoDecoder::release() {
     }
 
     if (mMediaCodecContext != nullptr) {
-        av_mediacodec_default_free(mVideoCodecContext);
+        av_mediacodec_default_free(mCodecContext);
         mMediaCodecContext = nullptr;
         LOGI("mediacodec context...release")
     }
@@ -223,10 +223,10 @@ void VideoDecoder::release() {
         LOGI("hw device context...release")
     }
 
-    if (mVideoCodecContext != nullptr) {
-        avcodec_close(mVideoCodecContext);
-        avcodec_free_context(&mVideoCodecContext);
-        mVideoCodecContext = nullptr;
+    if (mCodecContext != nullptr) {
+        avcodec_close(mCodecContext);
+        avcodec_free_context(&mCodecContext);
+        mCodecContext = nullptr;
         LOGI("codec...release")
     }
 }
@@ -277,7 +277,7 @@ int VideoDecoder::seek(double pos) {
     int64_t seekPos = av_rescale_q((int64_t)(pos * AV_TIME_BASE), AV_TIME_BASE_Q, mTimeBase);
     int ret = avformat_seek_file(mFtx, getStreamIndex(),
                                  INT64_MIN, seekPos, INT64_MAX, AVSEEK_FLAG_BACKWARD | AVSEEK_FLAG_FRAME);
-    avcodec_flush_buffers(mVideoCodecContext);
+    flush();
     LOGE("[video] seek to: %f, seekPos: %" PRId64 ", ret: %d", pos, seekPos, ret)
     mFixStartTime = true;
     return ret;

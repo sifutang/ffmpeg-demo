@@ -143,7 +143,7 @@ class FFPlayer(context: Context,
      * seek to position, time is s
      */
     fun seek(position: Double): Boolean {
-        if (mState < State.PREPARE) {
+        if (mState < State.PREPARE || mState >= State.STOP) {
             return false
         }
 
@@ -157,6 +157,7 @@ class FFPlayer(context: Context,
 
     fun stop() {
         Log.e(TAG, "stop: ")
+        mState = State.STOP
         val visualizer = mVisualizer
         mVisualizer = null
         visualizer?.enabled = false
@@ -168,15 +169,14 @@ class FFPlayer(context: Context,
         audioTrack?.release()
 
         nativeStop(mNativePtr)
-        mState = State.STOP
     }
 
     fun release() {
+        mState = State.RELEASE
         nativeRelease(mNativePtr)
         mNativePtr = -1
         mSurface?.release()
         mDrawer?.release()
-        mState = State.RELEASE
     }
 
     private fun initAudioTrack() {

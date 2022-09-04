@@ -28,6 +28,8 @@ public:
 
     virtual int seek(double pos);
 
+    virtual void flush();
+
     virtual void release();
 
     int getStreamIndex() const;
@@ -40,6 +42,8 @@ public:
 
 protected:
     AVFormatContext *mFtx = nullptr;
+
+    AVCodecContext *mCodecContext = nullptr;
 
     AVRational mTimeBase{};
 

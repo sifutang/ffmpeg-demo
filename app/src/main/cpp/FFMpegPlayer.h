@@ -71,7 +71,7 @@ private:
     JavaVM *mJvm = nullptr;
     PlayerJniContext mPlayerJni{};
 
-    PlayerState mPlayerState = UNKNOWN;
+    volatile PlayerState mPlayerState = UNKNOWN;
 
     bool mHasAbort = false;
 
@@ -80,6 +80,9 @@ private:
 
     volatile double mVideoSeekPos = -1;
     volatile double mAudioSeekPos = -1;
+
+    bool mHasAudioStream = false;
+    bool mHasVideoStream = false;
 
     std::thread *mReadPacketThread = nullptr;
 

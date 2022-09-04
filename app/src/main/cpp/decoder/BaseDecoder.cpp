@@ -50,3 +50,9 @@ AVRational BaseDecoder::getTimebase() const {
 int BaseDecoder::seek(double pos) {
     return -1;
 }
+
+void BaseDecoder::flush() {
+    if (mCodecContext != nullptr) {
+        avcodec_flush_buffers(mCodecContext);
+    }
+}

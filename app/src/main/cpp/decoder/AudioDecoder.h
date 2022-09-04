@@ -43,8 +43,6 @@ private:
 
     const AVCodec *mAudioCodec = nullptr;
 
-    AVCodecContext *mAudioCodecContext = nullptr;
-
     AVFrame *mAvFrame = nullptr;
 
     SwrContext *mSwrContext = nullptr;

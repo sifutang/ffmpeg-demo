@@ -54,8 +54,6 @@ private:
 
     const AVCodec *mVideoCodec = nullptr;
 
-    AVCodecContext *mVideoCodecContext = nullptr;
-
     AVMediaCodecContext *mMediaCodecContext = nullptr;
 
     AVFrame *mAvFrame = nullptr;
