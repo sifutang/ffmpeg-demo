@@ -9,6 +9,8 @@ AVPacketQueue::AVPacketQueue(int64_t maxSize) {
 }
 
 AVPacketQueue::~AVPacketQueue() {
+    LOGI("~AVPacketQueue")
+    clear();
     pthread_mutex_destroy(&mMutex);
     pthread_cond_destroy(&mCond);
 }
@@ -17,7 +19,6 @@ void AVPacketQueue::push(AVPacket *packet) {
     pthread_mutex_lock(&mMutex);
     mQueue.push(packet);
     pthread_mutex_unlock(&mMutex);
-
     notify();
 }
 
@@ -27,6 +28,25 @@ AVPacket * AVPacketQueue::pop() {
     mQueue.pop();
     pthread_mutex_unlock(&mMutex);
     return packet;
+}
+
+int AVPacketQueue::popTo(AVPacket *packet) {
+    pthread_mutex_lock(&mMutex);
+    bool isEmpty = mQueue.empty() && mQueue.size() <= 0;
+    if (isEmpty) {
+        pthread_mutex_unlock(&mMutex);
+        return -1;
+    }
+    AVPacket *pkt = mQueue.front();
+    int ref = av_packet_ref(packet, pkt);
+    if (ref != 0) {
+        LOGE("[AVPacketQueue], popTo failed, ref: %d", ref);
+    }
+    av_packet_free(&pkt);
+    av_free(pkt);
+    mQueue.pop();
+    pthread_mutex_unlock(&mMutex);
+    return 0;
 }
 
 bool AVPacketQueue::isFull() {
@@ -74,7 +94,7 @@ bool AVPacketQueue::isEmpty() {
 void AVPacketQueue::clear() {
     pthread_mutex_lock(&mMutex);
     int64_t size = mQueue.size();
-    LOGI("clear queue, size: %" PRId64, size)
+    LOGI("[AVPacketQueue], clear queue, size: %" PRId64, size)
     while (!mQueue.empty() && size > 0) {
         AVPacket *packet = mQueue.front();
         if (packet != nullptr) {

@@ -133,7 +133,7 @@ void FFMpegPlayer::stop() {
     if (mVideoThread != nullptr) {
         LOGE("join video thread")
         if (mVideoPacketQueue) {
-            mVideoPacketQueue->notify();
+            mVideoPacketQueue->clear();
         }
         mVideoThread->join();
         delete mVideoThread;
@@ -149,7 +149,7 @@ void FFMpegPlayer::stop() {
     if (mAudioThread != nullptr) {
         LOGE("join audio thread")
         if (mAudioPacketQueue) {
-            mAudioPacketQueue->notify();
+            mAudioPacketQueue->clear();
         }
         mAudioThread->join();
         delete mAudioThread;
@@ -214,7 +214,6 @@ int FFMpegPlayer::readAvPacket() {
             LOGE("audio queue is full, wait 10ms")
         }
         mAudioPacketQueue->push(avPacket);
-        LOGE("push audio packet")
     } else {
         av_packet_free(&avPacket);
         av_freep(&avPacket);
@@ -261,14 +260,18 @@ void FFMpegPlayer::VideoDecodeLoop() {
             break;
         }
 
-        AVPacket *packet = mVideoPacketQueue->pop();
+        AVPacket *packet = av_packet_alloc();
         if (packet != nullptr) {
-            int ret = mVideoDecoder->decode(packet);
-            av_packet_free(&packet);
-            av_freep(&packet);
-            if (ret == AVERROR_EOF) {
-                LOGE("VideoDecodeLoop AVERROR_EOF")
-                break;
+            int ret = mVideoPacketQueue->popTo(packet);
+            if (ret == 0) {
+                ret = mVideoDecoder->decode(packet);
+                av_packet_free(&packet);
+                av_freep(&packet);
+                if (ret == AVERROR_EOF) {
+                    LOGE("VideoDecodeLoop AVERROR_EOF")
+                }
+            } else {
+                LOGE("VideoDecodeLoop pop packet failed...")
             }
         }
     }
@@ -320,14 +323,18 @@ void FFMpegPlayer::AudioDecodeLoop() {
             break;
         }
 
-        AVPacket *packet = mAudioPacketQueue->pop();
+        AVPacket *packet = av_packet_alloc();
         if (packet != nullptr) {
-            int ret = mAudioDecoder->decode(packet);
-            av_packet_free(&packet);
-            av_freep(&packet);
-            if (ret == AVERROR_EOF) {
-                LOGE("AudioDecodeLoop AVERROR_EOF")
-                break;
+            int ret = mAudioPacketQueue->popTo(packet);
+            if (ret == 0) {
+                ret = mAudioDecoder->decode(packet);
+                av_packet_free(&packet);
+                av_freep(&packet);
+                if (ret == AVERROR_EOF) {
+                    LOGE("AudioDecodeLoop AVERROR_EOF")
+                }
+            } else {
+                LOGE("AudioDecodeLoop pop packet failed...")
             }
         }
     }
@@ -414,6 +421,7 @@ double FFMpegPlayer::getDuration() {
 }
 
 bool FFMpegPlayer::seek(double timeS) {
+    LOGI("seek to: %f, player state: %d", timeS, mPlayerState)
     bool ret = true;
     if (mHasVideoStream) {
         mVideoSeekPos = timeS;
@@ -428,7 +436,6 @@ bool FFMpegPlayer::seek(double timeS) {
     if (mAudioPacketQueue != nullptr) {
         mAudioPacketQueue->clear();
     }
-    LOGI("seek to: %f, player state: %d", timeS, mPlayerState)
     return ret;
 }
 

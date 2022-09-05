@@ -20,6 +20,8 @@ public:
 
     AVPacket* pop();
 
+    int popTo(AVPacket *packet);
+
     void clear();
 
     bool isFull();
