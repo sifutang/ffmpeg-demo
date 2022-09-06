@@ -7,6 +7,7 @@ import android.util.Log
 import android.view.MotionEvent
 import android.widget.SeekBar
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.res.ResourcesCompat
 import com.xyq.ffmpegdemo.databinding.ActivityMainBinding
 import com.xyq.ffmpegdemo.player.FFPlayer
 import com.xyq.ffmpegdemo.utils.FileUtils
@@ -104,6 +105,28 @@ class MainActivity : AppCompatActivity() {
                 mIsSeeking = false
             }
         })
+
+        mBinding.btnPlayer.tag = "play_resume"
+        mBinding.btnPlayer.setOnClickListener {
+            if (it.tag == "play_resume") {
+                it.background = ResourcesCompat.getDrawable(resources, R.drawable.play_pause, null)
+                it.tag = "play_pause"
+            } else if (it.tag == "play_pause") {
+                it.background = ResourcesCompat.getDrawable(resources, R.drawable.play_resume, null)
+                it.tag = "play_resume"
+            }
+        }
+
+        mBinding.btnAudio.tag = "audio_enable"
+        mBinding.btnAudio.setOnClickListener {
+            if (it.tag == "audio_enable") {
+                it.background = ResourcesCompat.getDrawable(resources, R.drawable.audio_disable, null)
+                it.tag = "audio_disable"
+            } else if (it.tag == "audio_disable") {
+                it.background = ResourcesCompat.getDrawable(resources, R.drawable.audio_enable, null)
+                it.tag = "audio_enable"
+            }
+        }
     }
 
     private fun startPlay() {
