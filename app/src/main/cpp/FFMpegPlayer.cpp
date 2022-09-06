@@ -114,6 +114,7 @@ void FFMpegPlayer::start() {
 void FFMpegPlayer::stop() {
     LOGI("FFMpegPlayer::stop")
     // wakeup read packet thread
+    mHasAbort = true;
     mPlayerState = PlayerState::STOP;
     wakeup();
 
@@ -125,7 +126,6 @@ void FFMpegPlayer::stop() {
         LOGE("release read thread")
     }
 
-    mHasAbort = true;
     mVideoSeekPos = -1;
     mAudioSeekPos = -1;
 
@@ -171,7 +171,7 @@ void FFMpegPlayer::stop() {
 
 void FFMpegPlayer::ReadPacketLoop() {
     LOGI("FFMpegPlayer::ReadPacketLoop start")
-    while (mPlayerState != PlayerState::STOP) {
+    while (mPlayerState != PlayerState::STOP && !mHasAbort) {
         if (mPlayerState == PlayerState::PAUSE) {
             wait();
         }
