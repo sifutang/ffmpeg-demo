@@ -69,3 +69,28 @@ Java_com_xyq_ffmpegdemo_player_FFPlayer_nativeSeek(JNIEnv *env, jobject thiz, jl
     }
     return player->seek(position);
 }
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_xyq_ffmpegdemo_player_FFPlayer_nativeSetMute(JNIEnv *env, jobject thiz, jlong handle,
+                                                      jboolean mute) {
+    auto *player = reinterpret_cast<FFMpegPlayer *>(handle);
+    if (player) {
+        player->setMute(mute);
+    }
+}
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_xyq_ffmpegdemo_player_FFPlayer_nativeResume(JNIEnv *env, jobject thiz, jlong handle) {
+    auto *player = reinterpret_cast<FFMpegPlayer *>(handle);
+    if (player) {
+        player->resume();
+    }
+}
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_xyq_ffmpegdemo_player_FFPlayer_nativePause(JNIEnv *env, jobject thiz, jlong handle) {
+    auto *player = reinterpret_cast<FFMpegPlayer *>(handle);
+    if (player) {
+        player->pause();
+    }
+}

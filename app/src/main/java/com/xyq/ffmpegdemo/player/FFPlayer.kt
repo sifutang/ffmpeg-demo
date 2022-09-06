@@ -32,6 +32,8 @@ class FFPlayer(context: Context,
         INIT,
         PREPARE,
         START,
+        RESUME,
+        PAUSE,
         STOP,
         RELEASE
     }
@@ -150,9 +152,31 @@ class FFPlayer(context: Context,
         return nativeSeek(mNativePtr, position)
     }
 
+    fun setMute(v: Boolean) {
+        if (mState < State.PREPARE || mState >= State.STOP) {
+            return
+        }
+
+        nativeSetMute(mNativePtr, v)
+    }
+
     fun start() {
         nativeStart(mNativePtr)
         mState = State.START
+    }
+
+    fun resume() {
+        if (mState == State.PAUSE) {
+            nativeResume(mNativePtr)
+            mState = State.RESUME
+        }
+    }
+
+    fun pause() {
+        if (mState == State.START || mState == State.RESUME) {
+            nativePause(mNativePtr)
+            mState = State.PAUSE
+        }
     }
 
     fun stop() {
@@ -288,9 +312,15 @@ class FFPlayer(context: Context,
 
     private external fun nativeSeek(handle: Long, position: Double): Boolean
 
+    private external fun nativeSetMute(handle: Long, mute: Boolean)
+
     private external fun nativePrepare(handle: Long, path: String, surface: Surface?): Boolean
 
     private external fun nativeStart(handle: Long)
+
+    private external fun nativeResume(handle: Long)
+
+    private external fun nativePause(handle: Long)
 
     private external fun nativeStop(handle: Long)
 

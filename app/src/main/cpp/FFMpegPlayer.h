@@ -61,7 +61,13 @@ public:
 
     void start();
 
+    void resume();
+
+    void pause();
+
     void stop();
+
+    void setMute(bool mute);
 
     bool seek(double timeS);
 
@@ -74,15 +80,16 @@ private:
     volatile PlayerState mPlayerState = UNKNOWN;
 
     bool mHasAbort = false;
+    bool mIsMute = false;
+
+    bool mHasAudioStream = false;
+    bool mHasVideoStream = false;
 
     pthread_cond_t mCond{};
     pthread_mutex_t mMutex{};
 
     volatile double mVideoSeekPos = -1;
     volatile double mAudioSeekPos = -1;
-
-    bool mHasAudioStream = false;
-    bool mHasVideoStream = false;
 
     std::thread *mReadPacketThread = nullptr;
 
@@ -113,6 +120,8 @@ private:
     void wait();
 
     void wakeup();
+
+    void updatePlayerState(PlayerState state);
 };
 
 

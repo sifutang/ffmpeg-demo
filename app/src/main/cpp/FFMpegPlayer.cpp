@@ -95,7 +95,7 @@ bool FFMpegPlayer::prepare(JNIEnv *env, std::string &path, jobject surface) {
     bool prepared = videoPrepared || audioPrePared;
     LOGI("videoPrepared: %d, audioPrePared: %d", videoPrepared, audioPrePared)
     if (prepared) {
-        mPlayerState = PlayerState::PREPARE;
+        updatePlayerState(PlayerState::PREPARE);
     }
     return prepared;
 }
@@ -105,19 +105,26 @@ void FFMpegPlayer::start() {
     if (mPlayerState != PlayerState::PREPARE) {  // prepared failed
         return;
     }
-    mPlayerState = PlayerState::START;
+    updatePlayerState(PlayerState::START);
     if (mReadPacketThread == nullptr) {
         mReadPacketThread = new std::thread(&FFMpegPlayer::ReadPacketLoop, this);
     }
 }
 
+void FFMpegPlayer::resume() {
+    updatePlayerState(PlayerState::PLAYING);
+    wakeup();
+}
+
+void FFMpegPlayer::pause() {
+    updatePlayerState(PlayerState::PAUSE);
+}
+
 void FFMpegPlayer::stop() {
     LOGI("FFMpegPlayer::stop")
-    // wakeup read packet thread
-    mHasAbort = true;
-    mPlayerState = PlayerState::STOP;
+    // wakeup read packet thread and release it
+    updatePlayerState(PlayerState::STOP);
     wakeup();
-
     if (mReadPacketThread != nullptr) {
         LOGE("join read thread")
         mReadPacketThread->join();
@@ -126,6 +133,8 @@ void FFMpegPlayer::stop() {
         LOGE("release read thread")
     }
 
+    mHasAbort = true;
+    mIsMute = false;
     mVideoSeekPos = -1;
     mAudioSeekPos = -1;
 
@@ -171,23 +180,31 @@ void FFMpegPlayer::stop() {
 
 void FFMpegPlayer::ReadPacketLoop() {
     LOGI("FFMpegPlayer::ReadPacketLoop start")
-    while (mPlayerState != PlayerState::STOP && !mHasAbort) {
+    while (mPlayerState != PlayerState::STOP) {
         if (mPlayerState == PlayerState::PAUSE) {
             wait();
+            LOGI("FFMpegPlayer::ReadPacketLoop wakeup")
+            // double check stop state
+            // or check pause state for pause & seek
+            continue;
         }
+
 
         // check is seek
         while (mVideoSeekPos >= 0 || mAudioSeekPos >= 0) {
-            LOGE("seek wait...mVideoSeekPos: %f, mAudioSeekPos: %f", mVideoSeekPos, mAudioSeekPos)
+            LOGI("seek wait...mVideoSeekPos: %f, mAudioSeekPos: %f", mVideoSeekPos, mAudioSeekPos)
             wait();
+            LOGI("FFMpegPlayer::ReadPacketLoop wakeup, seek ready")
         }
 
         // read packet to queue
-        mPlayerState = PlayerState::PLAYING;
+        updatePlayerState(PlayerState::PLAYING);
         bool isEnd = readAvPacket() != 0;
         if (isEnd) {
-            LOGE("read av packet end")
-            mPlayerState = PlayerState::PAUSE;
+            LOGE("read av packet end, mPlayerState: %d", mPlayerState)
+            if (mPlayerState == PlayerState::PLAYING) {
+                updatePlayerState(PlayerState::PAUSE);
+            }
         }
     }
     LOGI("FFMpegPlayer::ReadPacketLoop end")
@@ -393,12 +410,17 @@ void FFMpegPlayer::doRender(JNIEnv *env, AVFrame *avFrame) {
         av_mediacodec_release_buffer((AVMediaCodecBuffer *)avFrame->data[3], 1);
     } else if (avFrame->format == AV_SAMPLE_FMT_FLTP) {
         if (mAudioDecoder) {
+            // todo need opt
             int dataSize = mAudioDecoder->mDataSize;
             double timestamp = mAudioDecoder->mCurTimeStampMs;
             bool flushRender = mAudioDecoder->mNeedFlushRender;
             if (dataSize > 0) {
+                uint8_t *audioBuffer = mAudioDecoder->mAudioBuffer;
+                if (mIsMute) {
+                    memset(audioBuffer, 0, dataSize);
+                }
                 auto jByteArray = env->NewByteArray(dataSize);
-                env->SetByteArrayRegion(jByteArray, 0, dataSize, reinterpret_cast<const jbyte *>(mAudioDecoder->mAudioBuffer));
+                env->SetByteArrayRegion(jByteArray, 0, dataSize, reinterpret_cast<const jbyte *>(audioBuffer));
 
                 if (mPlayerJni.instance != nullptr && mPlayerJni.onAudioFrameArrived != nullptr) {
                     env->CallVoidMethod(mPlayerJni.instance, mPlayerJni.onAudioFrameArrived, jByteArray, dataSize, timestamp, flushRender);
@@ -407,6 +429,10 @@ void FFMpegPlayer::doRender(JNIEnv *env, AVFrame *avFrame) {
             }
         }
     }
+}
+
+void FFMpegPlayer::setMute(bool mute) {
+    mIsMute = mute;
 }
 
 double FFMpegPlayer::getDuration() {
@@ -457,4 +483,12 @@ void FFMpegPlayer::wait() {
     pthread_mutex_lock(&mMutex);
     pthread_cond_wait(&mCond, &mMutex);
     pthread_mutex_unlock(&mMutex);
+}
+
+void FFMpegPlayer::updatePlayerState(PlayerState state) {
+    if (mPlayerState == state) {
+        return;
+    }
+    LOGI("updatePlayerState from %d to %d", mPlayerState, state);
+    mPlayerState = state;
 }

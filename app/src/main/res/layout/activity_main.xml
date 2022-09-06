@@ -34,7 +34,7 @@
         app:layout_constraintRight_toRightOf="parent"
         />
 
-    <Button
+    <TextView
         android:id="@+id/btn_player"
         android:layout_width="30dp"
         android:layout_height="30dp"
@@ -45,7 +45,7 @@
         android:layout_marginBottom="74dp"
         />
 
-    <Button
+    <TextView
         android:id="@+id/btn_audio"
         android:layout_width="30dp"
         android:layout_height="30dp"

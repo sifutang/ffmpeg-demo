@@ -111,9 +111,11 @@ class MainActivity : AppCompatActivity() {
             if (it.tag == "play_resume") {
                 it.background = ResourcesCompat.getDrawable(resources, R.drawable.play_pause, null)
                 it.tag = "play_pause"
+                mPlayer.pause()
             } else if (it.tag == "play_pause") {
                 it.background = ResourcesCompat.getDrawable(resources, R.drawable.play_resume, null)
                 it.tag = "play_resume"
+                mPlayer.resume()
             }
         }
 
@@ -122,9 +124,11 @@ class MainActivity : AppCompatActivity() {
             if (it.tag == "audio_enable") {
                 it.background = ResourcesCompat.getDrawable(resources, R.drawable.audio_disable, null)
                 it.tag = "audio_disable"
+                mPlayer.setMute(true)
             } else if (it.tag == "audio_disable") {
                 it.background = ResourcesCompat.getDrawable(resources, R.drawable.audio_enable, null)
                 it.tag = "audio_enable"
+                mPlayer.setMute(false)
             }
         }
     }
@@ -132,6 +136,13 @@ class MainActivity : AppCompatActivity() {
     private fun startPlay() {
         mBinding.seekBar.isEnabled = true
         mBinding.seekBar.progress = 0
+
+        mBinding.btnPlayer.tag = "play_resume"
+        mBinding.btnPlayer.background = ResourcesCompat.getDrawable(resources, R.drawable.play_resume, null)
+
+        mBinding.btnAudio.tag = "audio_enable"
+        mBinding.btnAudio.background = ResourcesCompat.getDrawable(resources, R.drawable.audio_enable, null)
+
         thread {
             Log.i(TAG, "startPlay: start")
             val testVideo = "oceans.mp4"
