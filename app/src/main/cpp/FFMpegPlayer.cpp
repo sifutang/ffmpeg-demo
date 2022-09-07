@@ -26,7 +26,7 @@ void FFMpegPlayer::init(JNIEnv *env, jobject thiz) {
     mPlayerJni.onVideoFrameArrived = env->GetMethodID(jclazz, "onNative_videoFrameArrived", "(II[B[B[B)V");
 
     mPlayerJni.onAudioPrepared = env->GetMethodID(jclazz, "onNative_audioTrackPrepared", "()V");
-    mPlayerJni.onAudioFrameArrived = env->GetMethodID(jclazz, "onNative_audioFrameArrived", "([BIDZ)V");
+    mPlayerJni.onAudioFrameArrived = env->GetMethodID(jclazz, "onNative_audioFrameArrived", "([BIDZZ)V");
 }
 
 bool FFMpegPlayer::prepare(JNIEnv *env, std::string &path, jobject surface) {
@@ -189,7 +189,6 @@ void FFMpegPlayer::ReadPacketLoop() {
             continue;
         }
 
-
         // check is seek
         while (mVideoSeekPos >= 0 || mAudioSeekPos >= 0) {
             LOGI("seek wait...mVideoSeekPos: %f, mAudioSeekPos: %f", mVideoSeekPos, mAudioSeekPos)
@@ -198,9 +197,11 @@ void FFMpegPlayer::ReadPacketLoop() {
         }
 
         // read packet to queue
+        mIsReadEof = false;
         updatePlayerState(PlayerState::PLAYING);
         bool isEnd = readAvPacket() != 0;
         if (isEnd) {
+            mIsReadEof = true;
             LOGE("read av packet end, mPlayerState: %d", mPlayerState)
             if (mPlayerState == PlayerState::PLAYING) {
                 updatePlayerState(PlayerState::PAUSE);
@@ -252,7 +253,8 @@ void FFMpegPlayer::VideoDecodeLoop() {
     mVideoDecoder->setOnFrameArrived([this, env](AVFrame *frame) {
         if (!mHasAbort && mVideoDecoder) {
             mVideoDecoder->avSync(frame);
-            doRender(env, frame);
+            bool isEnd = mIsReadEof && mVideoPacketQueue->isEmpty();
+            doRender(env, frame, isEnd);
         } else {
             LOGE("[video] setOnFrameArrived, has abort")
         }
@@ -314,8 +316,9 @@ void FFMpegPlayer::AudioDecodeLoop() {
 
     mAudioDecoder->setOnFrameArrived([this, env](AVFrame *frame) {
         if (!mHasAbort && mAudioDecoder) {
+            bool isEnd = mIsReadEof && mAudioPacketQueue->isEmpty();
             mAudioDecoder->avSync(frame);
-            doRender(env, frame);
+            doRender(env, frame, isEnd);
         } else {
             LOGE("[audio] setOnFrameArrived, has abort")
         }
@@ -364,7 +367,7 @@ void FFMpegPlayer::AudioDecodeLoop() {
     LOGE("[audio] DetachCurrentThread");
 }
 
-void FFMpegPlayer::doRender(JNIEnv *env, AVFrame *avFrame) {
+void FFMpegPlayer::doRender(JNIEnv *env, AVFrame *avFrame, bool isEnd) {
     if (avFrame->format == AV_PIX_FMT_YUV420P) {
         if (!avFrame->data[0] || !avFrame->data[1] || !avFrame->data[2]) {
             LOGE("doRender failed, no yuv buffer")
@@ -423,7 +426,7 @@ void FFMpegPlayer::doRender(JNIEnv *env, AVFrame *avFrame) {
                 env->SetByteArrayRegion(jByteArray, 0, dataSize, reinterpret_cast<const jbyte *>(audioBuffer));
 
                 if (mPlayerJni.instance != nullptr && mPlayerJni.onAudioFrameArrived != nullptr) {
-                    env->CallVoidMethod(mPlayerJni.instance, mPlayerJni.onAudioFrameArrived, jByteArray, dataSize, timestamp, flushRender);
+                    env->CallVoidMethod(mPlayerJni.instance, mPlayerJni.onAudioFrameArrived, jByteArray, dataSize, timestamp, flushRender, isEnd);
                 }
                 env->DeleteLocalRef(jByteArray);
             }

@@ -81,7 +81,7 @@ private:
 
     bool mHasAbort = false;
     bool mIsMute = false;
-
+    bool mIsReadEof = false;
     bool mHasAudioStream = false;
     bool mHasVideoStream = false;
 
@@ -103,7 +103,7 @@ private:
 
     AVFormatContext *mFtx = nullptr;
 
-    void doRender(JNIEnv *env, AVFrame *avFrame);
+    void doRender(JNIEnv *env, AVFrame *avFrame, bool isEnd = false);
 
     int readAvPacket();
 

@@ -59,6 +59,8 @@ class FFPlayer(context: Context,
 
     interface FFPlayerListener {
         fun onProgress(timestamp: Double)
+
+        fun onComplete()
     }
 
     private var mFFPlayerListener: FFPlayerListener? = null
@@ -294,15 +296,18 @@ class FFPlayer(context: Context,
      * size: audio size
      * timestamp: ms
      */
-    private fun onNative_audioFrameArrived(buffer: ByteArray?, size: Int, timestamp: Double, flush: Boolean) {
+    private fun onNative_audioFrameArrived(buffer: ByteArray?, size: Int, timestamp: Double, flush: Boolean, isEnd: Boolean) {
         buffer?.apply {
             if (flush) {
                 mAudioTrack?.flush()
                 Log.e(TAG, "onNative_audioFrameArrived: flush audio track")
             }
             val code = mAudioTrack?.write(buffer, 0, size, AudioTrack.WRITE_NON_BLOCKING)
-            Log.i(TAG, "onNative_audioFrameArrived, size: $size, timestamp: ${timestamp}ms, code: $code")
+            Log.i(TAG, "onNative_audioFrameArrived, size: $size, timestamp: ${timestamp}ms, code: $code, isEnd: $isEnd")
             mFFPlayerListener?.onProgress(timestamp / 1000)
+            if (isEnd) {
+                mFFPlayerListener?.onComplete()
+            }
         }
     }
 

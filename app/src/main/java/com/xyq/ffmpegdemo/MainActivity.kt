@@ -166,6 +166,14 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
 
+                override fun onComplete() {
+                    runOnUiThread {
+                        mBinding.seekBar.progress = 100
+                        mBinding.btnPlayer.tag = "play_pause"
+                        mBinding.btnPlayer.background = ResourcesCompat.getDrawable(resources, R.drawable.play_pause, null)
+                    }
+                }
+
             })
             mPlayer.start()
         }
