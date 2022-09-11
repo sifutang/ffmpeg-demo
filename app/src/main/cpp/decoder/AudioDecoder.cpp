@@ -62,7 +62,7 @@ bool AudioDecoder::prepare() {
     LOGI("[audio] prepare, sample rate: %d, channels: %d, channel_layout: %" PRId64 ", fmt: %d, swr_init: %d",
          mCodecContext->sample_rate, mCodecContext->channels, mCodecContext->channel_layout, mCodecContext->sample_fmt, ret);
 
-    mStartTimeMs = -1;
+    mStartTimeMsForSync = -1;
 
     return ret == 0;
 }
@@ -96,19 +96,69 @@ int AudioDecoder::decode(AVPacket *avPacket) {
             mAvFrame->nb_samples
             );
 
-    mDataSize = 0;
+    updateTimestamp(mAvFrame);
     if (nb > 0) {
         mDataSize = nb * out_channels * av_get_bytes_per_sample(AV_SAMPLE_FMT_S16);
         if (mOnFrameArrivedListener != nullptr) {
             mOnFrameArrivedListener(mAvFrame);
         }
     }
+    mDataSize = 0;
+    mNeedFlushRender = false;
     LOGI("swr_convert, dataSize: %d, nb: %d, out_channels: %d", mDataSize, nb, out_channels)
 
     return 0;
 }
 
+void AudioDecoder::updateTimestamp(AVFrame *frame) {
+    if (mStartTimeMsForSync < 0) {
+        LOGE("update audio start time")
+        mStartTimeMsForSync = getCurrentTimeMs();
+    }
+    mCurTimeStampMs = frame->best_effort_timestamp;
+    // s -> ms
+    mCurTimeStampMs = (int64_t)(mCurTimeStampMs * av_q2d(mTimeBase) * 1000);
+
+    if (mFixStartTime) {
+        mStartTimeMsForSync = getCurrentTimeMs() - mCurTimeStampMs;
+        mFixStartTime = false;
+        LOGE("fix audio start time")
+    }
+}
+
+int64_t AudioDecoder::getTimestamp() const {
+    return mCurTimeStampMs;
+}
+
+void AudioDecoder::avSync(AVFrame *frame) {
+    int64_t elapsedTimeMs = getCurrentTimeMs() - mStartTimeMsForSync;
+    int64_t diff = mCurTimeStampMs - elapsedTimeMs;
+    diff = FFMIN(diff, DELAY_THRESHOLD);
+    LOGI("[audio] avSync, pts: %" PRId64 "ms, diff: %" PRId64 "ms", mCurTimeStampMs, diff)
+    if (diff > 0) {
+        av_usleep(diff * 1000);
+    }
+}
+
+double AudioDecoder::getDuration() {
+    return mDuration;
+}
+
+int AudioDecoder::seek(double pos) {
+    int64_t seekPos = av_rescale_q((int64_t)(pos * AV_TIME_BASE), AV_TIME_BASE_Q, mTimeBase);
+    int ret = avformat_seek_file(mFtx, getStreamIndex(),
+                             INT64_MIN, seekPos, INT64_MAX, AVSEEK_FLAG_BACKWARD | AVSEEK_FLAG_FRAME);
+    flush();
+    LOGE("[audio] seek to: %f, seekPos: %" PRId64 ", ret: %d", pos, seekPos, ret)
+    // seek后需要恢复起始时间
+    mFixStartTime = true;
+    mNeedFlushRender = true;
+    return ret;
+}
+
 void AudioDecoder::release() {
+    mFixStartTime = false;
+    mNeedFlushRender = false;
     if (mAudioBuffer != nullptr) {
         av_free(mAudioBuffer);
         mAudioBuffer = nullptr;
@@ -135,45 +185,3 @@ void AudioDecoder::release() {
     }
 }
 
-void AudioDecoder::avSync(AVFrame *frame) {
-    mCurTimeStampMs = frame->best_effort_timestamp;
-    // s -> ms
-    mCurTimeStampMs = (int64_t)(mCurTimeStampMs * av_q2d(mTimeBase) * 1000);
-
-    int64_t elapsedTimeMs;
-    if (mStartTimeMs < 0) {
-        mStartTimeMs = getCurrentTimeMs();
-        elapsedTimeMs = 0;
-    } else {
-        elapsedTimeMs = getCurrentTimeMs() - mStartTimeMs;
-    }
-
-    mNeedFlushRender = false;
-    if (mFixStartTime) {
-        mStartTimeMs = getCurrentTimeMs() - mCurTimeStampMs;
-        mFixStartTime = false;
-        mNeedFlushRender = true;
-        LOGE("[audio], fix start time")
-    }
-
-    int64_t diff = mCurTimeStampMs - elapsedTimeMs;
-    diff = FFMIN(diff, DELAY_THRESHOLD);
-    LOGI("[audio] avSync, pts: %" PRId64 "ms, diff: %" PRId64 "ms", mCurTimeStampMs, diff)
-    if (diff > 0) {
-        av_usleep(diff * 1000);
-    }
-}
-
-double AudioDecoder::getDuration() {
-    return mDuration;
-}
-
-int AudioDecoder::seek(double pos) {
-    int64_t seekPos = av_rescale_q((int64_t)(pos * AV_TIME_BASE), AV_TIME_BASE_Q, mTimeBase);
-    int ret = avformat_seek_file(mFtx, getStreamIndex(),
-                             INT64_MIN, seekPos, INT64_MAX, AVSEEK_FLAG_BACKWARD | AVSEEK_FLAG_FRAME);
-    flush();
-    LOGE("[audio] seek to: %f, seekPos: %" PRId64 ", ret: %d", pos, seekPos, ret)
-    mFixStartTime = true;
-    return ret;
-}

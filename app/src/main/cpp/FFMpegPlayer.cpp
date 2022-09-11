@@ -117,6 +117,7 @@ void FFMpegPlayer::resume() {
 }
 
 void FFMpegPlayer::pause() {
+    // todo 目前只是控制read packet，decode也需要添加控制，resume后的起始时间戳也需要update
     updatePlayerState(PlayerState::PAUSE);
 }
 

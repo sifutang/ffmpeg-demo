@@ -122,7 +122,7 @@ bool VideoDecoder::prepare() {
     }
 
     mAvFrame = av_frame_alloc();
-    mStartTimeMs = -1;
+    mStartTimeMsForSync = -1;
     LOGI("codec name: %s", mVideoCodec->name)
     return true;
 }
@@ -146,6 +146,9 @@ int VideoDecoder::decode(AVPacket *avPacket) {
     }
 
     LOGI("avcodec_receive_frame...pts: %" PRId64 ", format: %d", mAvFrame->pts, mAvFrame->format)
+
+    updateTimestamp(mAvFrame);
+
     if (mAvFrame->format == hw_pix_fmt) {
         LOGI("hw frame")
 //        AVFrame *sw_frame = av_frame_alloc();
@@ -197,8 +200,66 @@ int VideoDecoder::decode(AVPacket *avPacket) {
     return res;
 }
 
+int64_t VideoDecoder::getTimestamp() const {
+    return mCurTimeStampMs;
+}
+
+void VideoDecoder::updateTimestamp(AVFrame *frame) {
+    if (mStartTimeMsForSync < 0) {
+        LOGE("update video start time")
+        mStartTimeMsForSync = getCurrentTimeMs();
+    }
+    if (frame->pkt_dts != AV_NOPTS_VALUE) {
+        mCurTimeStampMs = frame->pkt_dts;
+    } else if (frame->pts != AV_NOPTS_VALUE) {
+        mCurTimeStampMs = frame->pts;
+    }
+    // s -> ms
+    mCurTimeStampMs = (int64_t)(mCurTimeStampMs * av_q2d(mTimeBase) * 1000);
+
+    if (mFixStartTime) {
+        mStartTimeMsForSync = getCurrentTimeMs() - mCurTimeStampMs;
+        mFixStartTime = false;
+        LOGE("fix video start time")
+    }
+}
+
+int VideoDecoder::getWidth() const {
+    return mWidth;
+}
+
+int VideoDecoder::getHeight() const {
+    return mHeight;
+}
+
+double VideoDecoder::getDuration() {
+    return mDuration;
+}
+
+void VideoDecoder::avSync(AVFrame *frame) {
+    int64_t elapsedTimeMs = getCurrentTimeMs() - mStartTimeMsForSync;
+    int64_t diff = mCurTimeStampMs - elapsedTimeMs;
+    diff = FFMIN(diff, DELAY_THRESHOLD);
+    LOGI("[video] avSync, pts: %" PRId64 "ms, diff: %" PRId64 "ms", mCurTimeStampMs, diff)
+    if (diff > 0) {
+        av_usleep(diff * 1000);
+    }
+}
+
+int VideoDecoder::seek(double pos) {
+    int64_t seekPos = av_rescale_q((int64_t)(pos * AV_TIME_BASE), AV_TIME_BASE_Q, mTimeBase);
+    int ret = avformat_seek_file(mFtx, getStreamIndex(),
+                                 INT64_MIN, seekPos, INT64_MAX, AVSEEK_FLAG_BACKWARD | AVSEEK_FLAG_FRAME);
+    flush();
+    LOGE("[video] seek to: %f, seekPos: %" PRId64 ", ret: %d", pos, seekPos, ret)
+    // seek后需要恢复起始时间
+    mFixStartTime = true;
+    return ret;
+}
+
 void VideoDecoder::release() {
-    mStartTimeMs = -1;
+    mFixStartTime = false;
+    mStartTimeMsForSync = -1;
     if (mAvFrame != nullptr) {
         av_frame_free(&mAvFrame);
         av_freep(&mAvFrame);
@@ -231,54 +292,3 @@ void VideoDecoder::release() {
     }
 }
 
-int VideoDecoder::getWidth() const {
-    return mWidth;
-}
-
-int VideoDecoder::getHeight() const {
-    return mHeight;
-}
-
-double VideoDecoder::getDuration() {
-    return mDuration;
-}
-
-void VideoDecoder::avSync(AVFrame *frame) {
-    if (frame->pkt_dts != AV_NOPTS_VALUE) {
-        mCurTimeStampMs = frame->pkt_dts;
-    } else if (frame->pts != AV_NOPTS_VALUE) {
-        mCurTimeStampMs = frame->pts;
-    }
-    // s -> ms
-    mCurTimeStampMs = (int64_t)(mCurTimeStampMs * av_q2d(mTimeBase) * 1000);
-
-    int64_t elapsedTimeMs;
-    if (mStartTimeMs < 0) {
-        mStartTimeMs = getCurrentTimeMs();
-        elapsedTimeMs = 0;
-    } else {
-        elapsedTimeMs = getCurrentTimeMs() - mStartTimeMs;
-    }
-
-    if (mFixStartTime) {
-        mStartTimeMs = getCurrentTimeMs() - mCurTimeStampMs;
-        mFixStartTime = false;
-    }
-
-    int64_t diff = mCurTimeStampMs - elapsedTimeMs;
-    diff = FFMIN(diff, DELAY_THRESHOLD);
-    LOGI("[video] avSync, pts: %" PRId64 "ms, diff: %" PRId64 "ms", mCurTimeStampMs, diff)
-    if (diff > 0) {
-        av_usleep(diff * 1000);
-    }
-}
-
-int VideoDecoder::seek(double pos) {
-    int64_t seekPos = av_rescale_q((int64_t)(pos * AV_TIME_BASE), AV_TIME_BASE_Q, mTimeBase);
-    int ret = avformat_seek_file(mFtx, getStreamIndex(),
-                                 INT64_MIN, seekPos, INT64_MAX, AVSEEK_FLAG_BACKWARD | AVSEEK_FLAG_FRAME);
-    flush();
-    LOGE("[video] seek to: %f, seekPos: %" PRId64 ", ret: %d", pos, seekPos, ret)
-    mFixStartTime = true;
-    return ret;
-}

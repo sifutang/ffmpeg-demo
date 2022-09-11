@@ -29,24 +29,27 @@ public:
 
     virtual void release() override;
 
+    int64_t getTimestamp() const;
+
     int64_t mCurTimeStampMs = 0;
 
-    // todo need opt
-    // seek后需要恢复起始时间
-    bool mFixStartTime = false;
     bool mNeedFlushRender = false;
 
     int mDataSize = 0;
     uint8_t *mAudioBuffer = nullptr;
 
 private:
-    int64_t mStartTimeMs = -1;
+    int64_t mStartTimeMsForSync = -1;
+
+    bool mFixStartTime = false;
 
     const AVCodec *mAudioCodec = nullptr;
 
     AVFrame *mAvFrame = nullptr;
 
     SwrContext *mSwrContext = nullptr;
+
+    void updateTimestamp(AVFrame *frame);
 };
 
 

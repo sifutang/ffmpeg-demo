@@ -36,14 +36,15 @@ public:
 
     virtual void release() override;
 
+    int64_t getTimestamp() const;
+
 private:
     int mWidth = -1;
     int mHeight = -1;
 
-    int64_t mStartTimeMs = -1;
+    int64_t mStartTimeMsForSync = -1;
     int64_t mCurTimeStampMs = 0;
 
-    // seek后需要恢复起始时间
     bool mFixStartTime = false;
 
     bool mUseHwDecode = false;
@@ -59,6 +60,8 @@ private:
     AVFrame *mAvFrame = nullptr;
 
     SwsContext *mSwsContext = nullptr;
+
+    void updateTimestamp(AVFrame *frame);
 
 };
 
