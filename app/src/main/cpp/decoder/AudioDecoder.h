@@ -30,9 +30,10 @@ public:
     virtual void release() override;
 
     int64_t mCurTimeStampMs = 0;
+
+    // todo need opt
     // seek后需要恢复起始时间
     bool mFixStartTime = false;
-    // todo need opt
     bool mNeedFlushRender = false;
 
     int mDataSize = 0;

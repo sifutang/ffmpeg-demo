@@ -82,6 +82,7 @@ private:
     bool mHasAbort = false;
     bool mIsMute = false;
     bool mIsReadEof = false;
+    bool mIsSeek = false;
     bool mHasAudioStream = false;
     bool mHasVideoStream = false;
 
