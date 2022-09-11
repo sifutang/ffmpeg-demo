@@ -1,7 +1,7 @@
 # ffmpeg-demo
-just for study ffmpeg, base5.0.1
+基于FFMpeg5.0.1版本的学习型DEMO
 
-文章原创首发于微信公众号“雪月清的随笔”
+文章原创首发于微信公众号“雪月清的随笔”，欢迎关注
 
 [Android FFmpeg系列01--编译与集成](https://mp.weixin.qq.com/s/pV4vUWmWbnzBK7qizr6YEw)
 
