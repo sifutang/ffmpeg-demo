@@ -45,6 +45,10 @@ private:
     int64_t mStartTimeMsForSync = -1;
     int64_t mCurTimeStampMs = 0;
 
+    int64_t mSeekPos = INT64_MAX;
+    int64_t mSeekStartTimeMs = -1;
+    int64_t mSeekEndTimeMs = -1;
+
     bool mFixStartTime = false;
 
     bool mUseHwDecode = false;

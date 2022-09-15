@@ -1,5 +1,5 @@
 #include <jni.h>
-#include "FFMpegPlayer.h"
+#include "main/FFMpegPlayer.h"
 
 extern "C"
 JNIEXPORT jlong JNICALL

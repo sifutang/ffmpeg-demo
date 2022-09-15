@@ -62,7 +62,7 @@ bool FFMpegPlayer::prepare(JNIEnv *env, std::string &path, jobject surface) {
     bool videoPrepared = false;
     // step4: prepare video decoder
     if (videoIndex >= 0) {
-        mHasVideoStream = true;
+        LOGI("select video stream, index: %d", videoIndex)
         mVideoDecoder = new VideoDecoder(videoIndex, mFtx, false);
         mVideoPacketQueue = new AVPacketQueue(50);
         mVideoThread = new std::thread(&FFMpegPlayer::VideoDecodeLoop, this);
@@ -80,7 +80,7 @@ bool FFMpegPlayer::prepare(JNIEnv *env, std::string &path, jobject surface) {
     bool audioPrePared = false;
     // prepare audio decoder
     if (audioIndex >= 0) {
-        mHasAudioStream = true;
+        LOGI("select audio stream, index: %d", videoIndex)
         mAudioDecoder = new AudioDecoder(audioIndex, mFtx);
         mAudioPacketQueue = new AVPacketQueue(50);
         mAudioThread = new std::thread(&FFMpegPlayer::AudioDecodeLoop, this);
@@ -192,11 +192,13 @@ void FFMpegPlayer::ReadPacketLoop() {
         }
 
         // check is seek
+        bool isSeeking = false;
         while (mVideoSeekPos >= 0 || mAudioSeekPos >= 0) {
+            isSeeking = true;
             LOGI("seek wait...mVideoSeekPos: %f, mAudioSeekPos: %f", mVideoSeekPos, mAudioSeekPos)
             wait();
         }
-        if (mIsSeek) {
+        if (isSeeking) {
             mIsSeek = false;
             LOGE("FFMpegPlayer::ReadPacketLoop, seek prepare has ready")
         }
@@ -204,7 +206,7 @@ void FFMpegPlayer::ReadPacketLoop() {
         // read packet to queue
         mIsReadEof = false;
         updatePlayerState(PlayerState::PLAYING);
-        bool isEnd = readAvPacket() != 0;
+        bool isEnd = readAvPacketToQueue() != 0;
         if (isEnd) {
             mIsReadEof = true;
             LOGE("read av packet end, mPlayerState: %d", mPlayerState)
@@ -216,45 +218,54 @@ void FFMpegPlayer::ReadPacketLoop() {
     LOGI("FFMpegPlayer::ReadPacketLoop end")
 }
 
-int FFMpegPlayer::readAvPacket() {
+int FFMpegPlayer::readAvPacketToQueue() {
     AVPacket *avPacket = av_packet_alloc();
     int ret = av_read_frame(mFtx, avPacket);
-    bool free = true;
+    bool suc = false;
     if (ret == 0) {
         if (mVideoDecoder && mVideoPacketQueue && avPacket->stream_index == mVideoDecoder->getStreamIndex()) {
-            while (mVideoPacketQueue->isFull()) {
-                mVideoPacketQueue->wait(10);
-                LOGE("video queue is full, wait 10ms")
-            }
-            if (!mIsSeek) {
-                mVideoPacketQueue->push(avPacket);
-                free = false;
-            } else {
-                LOGE("discard video packet for seek")
-            }
+            suc = pushPacketToQueue(avPacket, mVideoPacketQueue);
         } else if (mAudioDecoder && mAudioPacketQueue && avPacket->stream_index == mAudioDecoder->getStreamIndex()) {
-            while (mAudioPacketQueue->isFull()) {
-                mAudioPacketQueue->wait(10);
-                LOGE("audio queue is full, wait 10ms")
-            }
-            if (!mIsSeek) {
-                mAudioPacketQueue->push(avPacket);
-                free = false;
-            } else {
-                LOGE("discard audio packet for seek")
-            }
+            suc = pushPacketToQueue(avPacket, mAudioPacketQueue);
         }
     } else {
+        // send flush packet
+        AVPacket *videoPkt = av_packet_alloc();
+        videoPkt->size = 0;
+        videoPkt->data = nullptr;
+        if (!pushPacketToQueue(videoPkt, mVideoPacketQueue)) {
+            av_packet_free(&videoPkt);
+            av_freep(&videoPkt);
+        }
         LOGE("read packet...end or failed: %d", ret)
         ret = -1;
     }
 
-    if (free) {
+    if (!suc) {
         LOGI("av_read_frame, other...pts: %" PRId64, avPacket->pts)
         av_packet_free(&avPacket);
         av_freep(&avPacket);
     }
     return ret;
+}
+
+bool FFMpegPlayer::pushPacketToQueue(AVPacket *packet, AVPacketQueue *queue) const {
+    if (queue == nullptr) {
+        return false;
+    }
+
+    bool suc = false;
+    while (queue->isFull()) {
+        queue->wait(10);
+        LOGE("queue is full, wait 10ms, packet index: %d", packet->stream_index)
+    }
+    if (!mIsSeek) {
+        queue->push(packet);
+        suc = true;
+    } else {
+        LOGE("discard packet for seek, packet index: %d", packet->stream_index)
+    }
+    return suc;
 }
 
 void FFMpegPlayer::VideoDecodeLoop() {
@@ -470,28 +481,15 @@ double FFMpegPlayer::getDuration() {
 bool FFMpegPlayer::seek(double timeS) {
     LOGI("seek to: %f, player state: %d", timeS, mPlayerState)
     mIsSeek = true;
-    if (mHasVideoStream) {
-        mVideoSeekPos = timeS;
-    }
-    if (mHasAudioStream) {
-        mAudioSeekPos = timeS;
-    }
-    // clear queue first
     if (mVideoPacketQueue != nullptr) {
+        mVideoSeekPos = timeS;
         mVideoPacketQueue->clear();
     }
     if (mAudioPacketQueue != nullptr) {
+        mAudioSeekPos = timeS;
         mAudioPacketQueue->clear();
     }
     return true;
-}
-
-void FFMpegPlayer::lock() {
-    pthread_mutex_lock(&mMutex);
-}
-
-void FFMpegPlayer::unlock() {
-    pthread_mutex_unlock(&mMutex);
 }
 
 void FFMpegPlayer::wakeup() {

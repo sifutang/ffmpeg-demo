@@ -80,7 +80,7 @@ add_library( # Sets the name of the library.
         utils/ImageDef.h
         utils/CommonUtils.h
 
-        FFMpegPlayer.cpp
+        main/FFMpegPlayer.cpp
         native-lib.cpp
         )
 

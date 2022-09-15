@@ -129,12 +129,17 @@ bool VideoDecoder::prepare() {
 
 int VideoDecoder::decode(AVPacket *avPacket) {
     int res = avcodec_send_packet(mCodecContext, avPacket);
-    LOGI("[video] avcodec_send_packet...pts: %" PRId64 ", dts: %" PRId64 ", res: %d", avPacket->pts, avPacket->dts, res)
+    bool isKeyFrame = avPacket->flags & AV_PKT_FLAG_KEY;
+    LOGI("[video] avcodec_send_packet...pts: %" PRId64 ", dts: %" PRId64 ", isKeyFrame: %d, res: %d",
+         avPacket->pts, avPacket->dts, isKeyFrame, res)
+    if (res == AVERROR_EOF || res == AVERROR(EINVAL)) {
+        return res;
+    }
 
     do {
         res = avcodec_receive_frame(mCodecContext, mAvFrame);
         if (res != 0) {
-            LOGE("avcodec_receive_frame err: %d", res)
+            LOGE("[video] avcodec_receive_frame err: %d", res)
         }
         // todo 有点奇怪，但是这样解码出来才对，不会丢帧，oppo reno ace
     } while (mUseHwDecode && res == AVERROR(EAGAIN));
@@ -145,18 +150,18 @@ int VideoDecoder::decode(AVPacket *avPacket) {
         return res;
     }
 
-    LOGI("avcodec_receive_frame...pts: %" PRId64 ", format: %d", mAvFrame->pts, mAvFrame->format)
+    LOGI("[video] avcodec_receive_frame...pts: %" PRId64 ", format: %d", mAvFrame->pts, mAvFrame->format)
 
     updateTimestamp(mAvFrame);
 
-    if (mAvFrame->format == hw_pix_fmt) {
-        LOGI("hw frame")
-//        AVFrame *sw_frame = av_frame_alloc();
-//        int code = av_hwframe_transfer_data(sw_frame, mAvFrame, 0);
-        if (mOnFrameArrivedListener) {
-            mOnFrameArrivedListener(mAvFrame);
-        }
-    } else if (mAvFrame->format == AV_PIX_FMT_YUV420P || mAvFrame->format == AV_PIX_FMT_NV12) {
+    if (mAvFrame->pts >= mSeekPos) {
+        mSeekPos = INT64_MAX;
+        mSeekEndTimeMs = getCurrentTimeMs();
+        int64_t precisionSeekConsume = mSeekEndTimeMs - mSeekStartTimeMs;
+        LOGE("[video] avcodec_receive_frame...pts: %" PRId64 ", precision seek consume: %" PRId64, mAvFrame->pts, precisionSeekConsume)
+    }
+
+    if (mAvFrame->format == AV_PIX_FMT_YUV420P || mAvFrame->format == AV_PIX_FMT_NV12 || mAvFrame->format == hw_pix_fmt) {
         if (mOnFrameArrivedListener) {
             mOnFrameArrivedListener(mAvFrame);
         }
@@ -247,13 +252,15 @@ void VideoDecoder::avSync(AVFrame *frame) {
 }
 
 int VideoDecoder::seek(double pos) {
+    flush();
     int64_t seekPos = av_rescale_q((int64_t)(pos * AV_TIME_BASE), AV_TIME_BASE_Q, mTimeBase);
     int ret = avformat_seek_file(mFtx, getStreamIndex(),
                                  INT64_MIN, seekPos, INT64_MAX, AVSEEK_FLAG_BACKWARD | AVSEEK_FLAG_FRAME);
-    flush();
     LOGE("[video] seek to: %f, seekPos: %" PRId64 ", ret: %d", pos, seekPos, ret)
     // seek后需要恢复起始时间
     mFixStartTime = true;
+    mSeekPos = seekPos;
+    mSeekStartTimeMs = getCurrentTimeMs();
     return ret;
 }
 

@@ -7,10 +7,10 @@
 #include <ctime>
 #include <pthread.h>
 #include <thread>
-#include "utils/Logger.h"
-#include "decoder/VideoDecoder.h"
-#include "decoder/AudioDecoder.h"
-#include "base/AVPacketQueue.h"
+#include "../utils/Logger.h"
+#include "../decoder/VideoDecoder.h"
+#include "../decoder/AudioDecoder.h"
+#include "../base/AVPacketQueue.h"
 
 extern "C" {
 #include "libavutil/avutil.h"
@@ -83,8 +83,6 @@ private:
     bool mIsMute = false;
     bool mIsReadEof = false;
     bool mIsSeek = false;
-    bool mHasAudioStream = false;
-    bool mHasVideoStream = false;
 
     pthread_cond_t mCond{};
     pthread_mutex_t mMutex{};
@@ -106,17 +104,15 @@ private:
 
     void doRender(JNIEnv *env, AVFrame *avFrame, bool isEnd = false);
 
-    int readAvPacket();
+    int readAvPacketToQueue();
+
+    bool pushPacketToQueue(AVPacket *packet, AVPacketQueue *queue) const;
 
     void ReadPacketLoop();
 
     void VideoDecodeLoop();
 
     void AudioDecodeLoop();
-
-    void lock();
-
-    void unlock();
 
     void wait();
 

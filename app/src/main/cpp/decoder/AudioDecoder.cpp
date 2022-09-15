@@ -69,7 +69,10 @@ bool AudioDecoder::prepare() {
 
 int AudioDecoder::decode(AVPacket *avPacket) {
     int res = avcodec_send_packet(mCodecContext, avPacket);
-    LOGI("[audio] avcodec_send_packet...pts: %" PRId64 ", dts: %" PRId64 ", res: %d", avPacket->pts, avPacket->dts, res)
+    LOGI("[audio] avcodec_send_packet...pts: %" PRId64 ", res: %d", avPacket->pts, res)
+    if (res == AVERROR_EOF || res == AVERROR(EINVAL)) {
+        return res;
+    }
 
     res = avcodec_receive_frame(mCodecContext, mAvFrame);
     if (res != 0) {
@@ -78,7 +81,7 @@ int AudioDecoder::decode(AVPacket *avPacket) {
         return res;
     }
     auto pts = mAvFrame->pts * av_q2d(mFtx->streams[getStreamIndex()]->time_base) * 1000;
-    LOGI("[audio] avcodec_receive_frame...pts: %" PRId64 ", time: %f, best_effort_timestamp: %" PRId64, mAvFrame->pts, pts, mAvFrame->best_effort_timestamp)
+    LOGI("[audio] avcodec_receive_frame...pts: %" PRId64 ", time: %f", mAvFrame->pts, pts)
 
     int out_nb = (int) av_rescale_rnd(mAvFrame->nb_samples, 44100, mAvFrame->sample_rate, AV_ROUND_UP);
     int out_channels = av_get_channel_layout_nb_channels(AV_CH_LAYOUT_STEREO);
@@ -97,6 +100,7 @@ int AudioDecoder::decode(AVPacket *avPacket) {
             );
 
     updateTimestamp(mAvFrame);
+
     if (nb > 0) {
         mDataSize = nb * out_channels * av_get_bytes_per_sample(AV_SAMPLE_FMT_S16);
         if (mOnFrameArrivedListener != nullptr) {
@@ -115,7 +119,7 @@ void AudioDecoder::updateTimestamp(AVFrame *frame) {
         LOGE("update audio start time")
         mStartTimeMsForSync = getCurrentTimeMs();
     }
-    mCurTimeStampMs = frame->best_effort_timestamp;
+    mCurTimeStampMs = frame->pts;
     // s -> ms
     mCurTimeStampMs = (int64_t)(mCurTimeStampMs * av_q2d(mTimeBase) * 1000);
 
@@ -145,10 +149,10 @@ double AudioDecoder::getDuration() {
 }
 
 int AudioDecoder::seek(double pos) {
+    flush();
     int64_t seekPos = av_rescale_q((int64_t)(pos * AV_TIME_BASE), AV_TIME_BASE_Q, mTimeBase);
     int ret = avformat_seek_file(mFtx, getStreamIndex(),
                              INT64_MIN, seekPos, INT64_MAX, AVSEEK_FLAG_BACKWARD | AVSEEK_FLAG_FRAME);
-    flush();
     LOGE("[audio] seek to: %f, seekPos: %" PRId64 ", ret: %d", pos, seekPos, ret)
     // seek后需要恢复起始时间
     mFixStartTime = true;
