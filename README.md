@@ -15,6 +15,6 @@
 
 [Android FFmpeg系列06--音频可视化](https://mp.weixin.qq.com/s/xdHyc_E3qdOFxVjRpMxLZA)
 
-[Android FFmpeg系列07--音画同步]()
+[Android FFmpeg系列07--音画同步](https://mp.weixin.qq.com/s/DMScDxucdT_MadChxPgxDQ)
 
 [Android FFmpeg系列08--seek]()
