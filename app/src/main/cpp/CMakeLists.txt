@@ -74,11 +74,15 @@ add_library( # Sets the name of the library.
         ./decoder/BaseDecoder.cpp
         ./decoder/VideoDecoder.cpp
         ./decoder/AudioDecoder.cpp
+
         ./base/AVPacketQueue.cpp
+        ./base/FFAVDecoder.cpp
+        ./base/FFReader.cpp
 
         utils/Logger.h
         utils/ImageDef.h
         utils/CommonUtils.h
+        utils/FFmpegUtils.cpp
 
         main/FFMpegPlayer.cpp
         native-lib.cpp
