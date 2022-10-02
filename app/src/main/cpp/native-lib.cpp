@@ -94,3 +94,12 @@ Java_com_xyq_ffmpegdemo_player_FFPlayer_nativePause(JNIEnv *env, jobject thiz, j
         player->pause();
     }
 }
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_xyq_ffmpegdemo_player_FFPlayer_nativeSetFilter(JNIEnv *env, jobject thiz, jlong handle,
+                                                        jint filter, jboolean enable) {
+    auto *player = reinterpret_cast<FFMpegPlayer *>(handle);
+    if (player) {
+        player->setFilter(filter, enable);
+    }
+}

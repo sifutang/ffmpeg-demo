@@ -7,9 +7,13 @@
 #include "BaseDecoder.h"
 
 extern "C" {
-#include "libavcodec/mediacodec.h"
-#include "libswscale/swscale.h"
-#include "libavutil/imgutils.h"
+#include "../vendor/ffmpeg/libavcodec/mediacodec.h"
+#include "../vendor/ffmpeg/libswscale/swscale.h"
+#include "../vendor/ffmpeg/libavutil/imgutils.h"
+#include "../vendor/ffmpeg/libavfilter/avfilter.h"
+#include "../vendor/ffmpeg/libavfilter/buffersrc.h"
+#include "../vendor/ffmpeg/libavfilter/buffersink.h"
+#include "../vendor/ffmpeg/libavutil/opt.h"
 }
 
 class VideoDecoder: public BaseDecoder {
@@ -38,6 +42,8 @@ public:
 
     int64_t getTimestamp() const;
 
+    void enableGridFilter(bool enable);
+
 private:
     int mWidth = -1;
     int mHeight = -1;
@@ -61,11 +67,23 @@ private:
 
     AVMediaCodecContext *mMediaCodecContext = nullptr;
 
-    AVFrame *mAvFrame = nullptr;
-
     SwsContext *mSwsContext = nullptr;
 
+    bool mEnableFilter = false;
+    AVFrame *mFilterAvFrame = nullptr;
+    AVFilterContext *mBufferScrCtx = nullptr;
+    AVFilterContext *mBufferSinkCtx = nullptr;
+    AVFilterInOut *mFilterOutputs = nullptr;
+    AVFilterInOut *mFilterInputs = nullptr;
+    AVFilterGraph *mFilterGraph = nullptr;
+
     void updateTimestamp(AVFrame *frame);
+
+    int swsScale(AVFrame *srcFrame, AVFrame *swFrame);
+
+    void notifyFrameArrived(AVFrame *frame);
+
+    void initFilters();
 
 };
 

@@ -5,9 +5,9 @@
 #include <string>
 
 extern "C" {
-#include "libavcodec/avcodec.h"
-#include "libavformat/avformat.h"
-#include "libavutil/time.h"
+#include "../vendor/ffmpeg//libavcodec/avcodec.h"
+#include "../vendor/ffmpeg/libavformat/avformat.h"
+#include "../vendor/ffmpeg/libavutil/time.h"
 }
 
 #define DELAY_THRESHOLD 100 // 100ms
@@ -16,7 +16,7 @@ class BaseDecoder {
 
 public:
     BaseDecoder(int index, AVFormatContext *ftx);
-    ~BaseDecoder();
+    virtual ~BaseDecoder();
 
     virtual double getDuration();
 
@@ -48,6 +48,8 @@ protected:
     AVRational mTimeBase{};
 
     double mDuration = 0;
+
+    AVFrame *mAvFrame = nullptr;
 
     std::function<void(int, std::string &)> mErrorMsgListener = nullptr;
 

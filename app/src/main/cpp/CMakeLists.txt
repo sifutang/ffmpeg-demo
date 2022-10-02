@@ -10,10 +10,16 @@ cmake_minimum_required(VERSION 3.18.1)
 project("ffmpegdemo")
 
 message("CMAKE_ANDROID_ARCH_ABI: ${CMAKE_ANDROID_ARCH_ABI}")
-set(ffmpeg_lib_dir ${CMAKE_SOURCE_DIR}/../libs/${CMAKE_ANDROID_ARCH_ABI})
-set(ffmpeg_head_dir ${CMAKE_SOURCE_DIR}/ffmpeg)
 
-include_directories(${ffmpeg_head_dir}/include)
+# ffmpeg
+set(ffmpeg_lib_dir ${CMAKE_SOURCE_DIR}/../libs/${CMAKE_ANDROID_ARCH_ABI})
+set(ffmpeg_head_dir ${CMAKE_SOURCE_DIR}/vendor/ffmpeg)
+include_directories(${ffmpeg_head_dir})
+
+# libyuv
+set(libyuv_lib_dir ${CMAKE_SOURCE_DIR}/../libs/${CMAKE_ANDROID_ARCH_ABI})
+set(libyuv_head_dir ${CMAKE_SOURCE_DIR}/vendor/libyuv)
+include_directories(${libyuv_head_dir}/libyuv.h)
 
 # Creates and names a library, sets it as either STATIC
 # or SHARED, and provides the relative paths to its source code.
@@ -64,6 +70,15 @@ set_target_properties( avformat
         PROPERTIES IMPORTED_LOCATION
         ${ffmpeg_lib_dir}/libavformat.so )
 
+add_library(
+        yuv
+        SHARED
+        IMPORTED
+)
+set_target_properties(yuv
+        PROPERTIES IMPORTED_LOCATION
+        ${libyuv_lib_dir}/libyuv.so)
+
 add_library( # Sets the name of the library.
         ffmpegdemo
 
@@ -76,13 +91,14 @@ add_library( # Sets the name of the library.
         ./decoder/AudioDecoder.cpp
 
         ./base/AVPacketQueue.cpp
-        ./base/FFAVDecoder.cpp
-        ./base/FFReader.cpp
+        reader/FFReader.cpp
+
+        ./reader/FFVideoReader.cpp
 
         utils/Logger.h
         utils/ImageDef.h
         utils/CommonUtils.h
-        utils/FFmpegUtils.cpp
+        utils/FFMpegUtils.cpp
 
         main/FFMpegPlayer.cpp
         native-lib.cpp
@@ -107,13 +123,18 @@ find_library( # Sets the name of the path variable.
 
 target_link_libraries( # Specifies the target library.
         ffmpegdemo
+
+        # ffmpeg
         avutil
         swresample
         avcodec
         avfilter
         swscale
         avformat
-        # Links the target library to the log library
-        # included in the NDK.
+
+        # libyuv
+        yuv
+
+        # system
         android
         ${log-lib})

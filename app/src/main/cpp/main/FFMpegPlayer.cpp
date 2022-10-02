@@ -93,7 +93,7 @@ bool FFMpegPlayer::prepare(JNIEnv *env, std::string &path, jobject surface) {
         }
     }
     bool prepared = videoPrepared || audioPrePared;
-    LOGI("videoPrepared: %d, audioPrePared: %d", videoPrepared, audioPrePared)
+    LOGI("videoPrepared: %d, audioPrePared: %d, path: %s", videoPrepared, audioPrePared, path.c_str())
     if (prepared) {
         updatePlayerState(PlayerState::PREPARE);
     }
@@ -444,7 +444,7 @@ void FFMpegPlayer::doRender(JNIEnv *env, AVFrame *avFrame, bool isEnd) {
         if (mAudioDecoder) {
             // todo need opt
             int dataSize = mAudioDecoder->mDataSize;
-            double timestamp = mAudioDecoder->mCurTimeStampMs;
+            double timestamp = mAudioDecoder->getTimestamp();
             bool flushRender = mAudioDecoder->mNeedFlushRender;
             if (dataSize > 0) {
                 uint8_t *audioBuffer = mAudioDecoder->mAudioBuffer;
@@ -510,4 +510,10 @@ void FFMpegPlayer::updatePlayerState(PlayerState state) {
     }
     LOGI("updatePlayerState from %d to %d", mPlayerState, state);
     mPlayerState = state;
+}
+
+void FFMpegPlayer::setFilter(int filterVal, bool enable) {
+    if (filterVal == Filter::GRID && mVideoDecoder) {
+        mVideoDecoder->enableGridFilter(enable);
+    }
 }

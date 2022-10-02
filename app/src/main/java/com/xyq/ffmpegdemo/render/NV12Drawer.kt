@@ -122,6 +122,7 @@ class NV12Drawer: IDrawer {
         GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, 0)
         if (mYuvTextures[0] != -1) {
             GLES20.glDeleteTextures(mYuvTextures.size, mYuvTextures, 0)
+            mYuvTextures[0] = -1
         }
         GLES20.glDeleteProgram(mProgram)
     }

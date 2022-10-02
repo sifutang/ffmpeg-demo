@@ -1,11 +1,14 @@
 package com.xyq.ffmpegdemo.render
 
+import android.content.Context
 import android.opengl.GLES20
 import android.util.Log
+import com.xyq.ffmpegdemo.R
+import com.xyq.ffmpegdemo.utils.FileUtils
 import com.xyq.ffmpegdemo.utils.OpenGLTools
 import java.nio.ByteBuffer
 
-class YuvDrawer: BaseDrawer() {
+class YuvDrawer(private val mContext: Context): BaseDrawer() {
 
     companion object {
         private const val TAG = "VideoDrawer"
@@ -42,42 +45,11 @@ class YuvDrawer: BaseDrawer() {
     }
 
     override fun getVertexShader(): String {
-        return "attribute vec4 aPosition;" +
-                "uniform mat4 uMatrix;" +
-                "attribute vec2 aCoordinate;" +
-                "attribute float progress;" +
-                "varying vec2 vCoordinate;" +
-                "varying float vProgress;" +
-                "void main() {" +
-                "  gl_Position = aPosition * uMatrix;" +
-                "  vCoordinate = aCoordinate;" +
-                "  vProgress = progress;" +
-                "}"
+        return FileUtils.readTextFileFromResource(mContext, R.raw.vertex_yuv)
     }
 
     override fun getFragmentShader(): String {
-        return "precision mediump float;" +
-                "varying vec2 vCoordinate;" +
-                "varying float vProgress;" +
-                "uniform sampler2D samplerY;" +
-                "uniform sampler2D samplerU;" +
-                "uniform sampler2D samplerV;" +
-                "void main() {" +
-                "    float y,u,v;" +
-                "    y = texture2D(samplerY, vCoordinate).r;" +
-                "    u = texture2D(samplerU, vCoordinate).r - 0.5;" +
-                "    v = texture2D(samplerV, vCoordinate).r - 0.5;" +
-                "    vec3 rgb;" +
-                "    rgb.r = y + 1.403 * v;" +
-                "    rgb.g = y - 0.344 * u - 0.714 * v;" +
-                "    rgb.b = y + 1.770 * u;" +
-                "    if (vCoordinate.x > vProgress) {" +
-                "        gl_FragColor = vec4(rgb, 1);" +
-                "    } else {" +
-                "        float h = dot(rgb, vec3(0.3, 0.59, 0.21));" +
-                "        gl_FragColor = vec4(h, h, h, 1);" +
-                "    }" +
-                "}"
+        return FileUtils.readTextFileFromResource(mContext, R.raw.fragment_yuv)
     }
 
     override fun onInit() {

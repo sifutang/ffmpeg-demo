@@ -5,8 +5,8 @@
 #include <pthread.h>
 
 extern "C" {
-#include "libavcodec/packet.h"
-#include "libavutil/avutil.h"
+#include "../vendor/ffmpeg/libavcodec/packet.h"
+#include "../vendor/ffmpeg/libavutil/avutil.h"
 }
 
 class AVPacketQueue {

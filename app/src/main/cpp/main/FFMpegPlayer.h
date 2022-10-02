@@ -13,12 +13,12 @@
 #include "../base/AVPacketQueue.h"
 
 extern "C" {
-#include "libavutil/avutil.h"
-#include "libavutil/frame.h"
-#include "libavutil/time.h"
-#include "libavformat/avformat.h"
-#include "libavcodec/avcodec.h"
-#include "libavcodec/jni.h"
+#include "../vendor/ffmpeg/libavutil/avutil.h"
+#include "../vendor/ffmpeg/libavutil/frame.h"
+#include "../vendor/ffmpeg/libavutil/time.h"
+#include "../vendor/ffmpeg/libavformat/avformat.h"
+#include "../vendor/ffmpeg/libavcodec/avcodec.h"
+#include "../vendor/ffmpeg/libavcodec/jni.h"
 }
 
 typedef struct PlayerJniContext {
@@ -47,6 +47,10 @@ enum PlayerState {
     STOP
 };
 
+enum Filter {
+    GRID = 0
+};
+
 class FFMpegPlayer {
 
 public:
@@ -68,6 +72,8 @@ public:
     void stop();
 
     void setMute(bool mute);
+
+    void setFilter(int filter, bool enable);
 
     bool seek(double timeS);
 

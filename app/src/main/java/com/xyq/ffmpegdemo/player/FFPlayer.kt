@@ -19,7 +19,7 @@ import javax.microedition.khronos.opengles.GL10
 import kotlin.math.abs
 import kotlin.math.hypot
 
-class FFPlayer(context: Context,
+class FFPlayer(private val mContext: Context,
                private val mGlSurfaceView: GLSurfaceView,
                private val mAudioVisualizeView: AudioVisualizeView): GLSurfaceView.Renderer {
 
@@ -36,6 +36,10 @@ class FFPlayer(context: Context,
         PAUSE,
         STOP,
         RELEASE
+    }
+
+    enum class Filter {
+        GRID
     }
 
     private var mNativePtr = -1L
@@ -57,6 +61,8 @@ class FFPlayer(context: Context,
 
     private var mDuration = -1.0
 
+    private var mPath = ""
+
     interface FFPlayerListener {
         fun onProgress(timestamp: Double)
 
@@ -70,7 +76,7 @@ class FFPlayer(context: Context,
         mState = State.INIT
 
         // 默认ffmpeg使用硬解
-        mDrawer = CameraDrawer(context)
+        mDrawer = CameraDrawer(mContext)
 
         mGlSurfaceView.setEGLContextClientVersion(2)
         mGlSurfaceView.setRenderer(this)
@@ -97,9 +103,7 @@ class FFPlayer(context: Context,
     }
 
     fun setFilterProgress(value: Float) {
-        if (mDrawer is CameraDrawer) {
-            (mDrawer as CameraDrawer).setFilterProgress(value)
-        }
+        mDrawer?.setFilterProgress(value)
     }
 
     fun setListener(listener: FFPlayerListener?) {
@@ -114,6 +118,15 @@ class FFPlayer(context: Context,
         mSurface?.release()
         mSurface = null
 
+        // 更换播放源时，释放掉之前的drawer，video首帧上来后再创建
+        // todo need opt
+        if (mPath.isNotEmpty() && path != mPath) {
+            Log.i(TAG, "prepare: path changed...")
+            mDuration = -1.0
+            mDrawer?.release()
+            mDrawer = null
+        }
+
         val st: SurfaceTexture?
         if (mDrawer is CameraDrawer) {
             st = (mDrawer as CameraDrawer).getSurfaceTexture()
@@ -125,6 +138,7 @@ class FFPlayer(context: Context,
         }
         nativePrepare(mNativePtr, path, mSurface)
         mState = State.PREPARE
+        mPath = path
 
         mDuration = getDuration()
     }
@@ -162,6 +176,14 @@ class FFPlayer(context: Context,
         nativeSetMute(mNativePtr, v)
     }
 
+    fun setFilter(filter: Filter, enable: Boolean){
+        if (mState < State.PREPARE || mState >= State.STOP) {
+            return
+        }
+
+        nativeSetFilter(mNativePtr, filter.ordinal, enable)
+    }
+
     fun start() {
         nativeStart(mNativePtr)
         mState = State.START
@@ -182,7 +204,11 @@ class FFPlayer(context: Context,
     }
 
     fun stop() {
-        Log.e(TAG, "stop: ")
+        if (mState == State.STOP) {
+            Log.e(TAG, "has stopped")
+            return
+        }
+        Log.i(TAG, "stop: ")
         mState = State.STOP
         val visualizer = mVisualizer
         mVisualizer = null
@@ -198,6 +224,7 @@ class FFPlayer(context: Context,
     }
 
     fun release() {
+        mPath = ""
         mState = State.RELEASE
         nativeRelease(mNativePtr)
         mNativePtr = -1
@@ -266,7 +293,7 @@ class FFPlayer(context: Context,
             mDrawer = if (v == null) {
                 NV12Drawer()
             } else {
-                YuvDrawer()
+                YuvDrawer(mContext)
             }
             mDrawer!!.init(true)
             mDrawer!!.setVideoSize(mVideoWidth, mVideoHeight)
@@ -318,6 +345,8 @@ class FFPlayer(context: Context,
     private external fun nativeSeek(handle: Long, position: Double): Boolean
 
     private external fun nativeSetMute(handle: Long, mute: Boolean)
+
+    private external fun nativeSetFilter(handle: Long, filter: Int, enable: Boolean)
 
     private external fun nativePrepare(handle: Long, path: String, surface: Surface?): Boolean
 

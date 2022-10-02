@@ -22,17 +22,45 @@
         app:layout_constraintRight_toRightOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
+    <Button
+        android:id="@+id/btn_select_file"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="切换文件"
+        app:layout_constraintRight_toRightOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <Button
+        android:id="@+id/btn_grid_filter"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="GRID"
+        android:layout_marginRight="8dp"
+        app:layout_constraintRight_toLeftOf="@+id/btn_select_file"
+        app:layout_constraintTop_toTopOf="parent" />
+
     <TextView
         android:id="@+id/tv_timer"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="00:00:00"
         android:textColor="@color/white"
-        android:layout_marginBottom="20dp"
-        app:layout_constraintBottom_toTopOf="@+id/seek_bar"
+        android:layout_marginBottom="16dp"
+        app:layout_constraintBottom_toTopOf="@+id/video_thumbnails"
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintRight_toRightOf="parent"
         />
+
+    <LinearLayout
+        android:id="@+id/video_thumbnails"
+        android:orientation="horizontal"
+        android:layout_width="match_parent"
+        android:layout_height="60dp"
+        android:layout_marginBottom="16dp"
+        app:layout_constraintBottom_toTopOf="@+id/seek_bar"
+        app:layout_constraintLeft_toLeftOf="parent"
+        app:layout_constraintRight_toRightOf="parent">
+    </LinearLayout>
 
     <TextView
         android:id="@+id/btn_player"

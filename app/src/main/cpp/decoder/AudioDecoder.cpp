@@ -69,7 +69,8 @@ bool AudioDecoder::prepare() {
 
 int AudioDecoder::decode(AVPacket *avPacket) {
     int res = avcodec_send_packet(mCodecContext, avPacket);
-    LOGI("[audio] avcodec_send_packet...pts: %" PRId64 ", res: %d", avPacket->pts, res)
+    int index = av_index_search_timestamp(mFtx->streams[getStreamIndex()], avPacket->pts, AVSEEK_FLAG_BACKWARD);
+    LOGI("[audio] avcodec_send_packet...pts: %" PRId64 ", res: %d, index: %d", avPacket->pts, res, index)
     if (res == AVERROR_EOF || res == AVERROR(EINVAL)) {
         return res;
     }
@@ -83,23 +84,11 @@ int AudioDecoder::decode(AVPacket *avPacket) {
     auto pts = mAvFrame->pts * av_q2d(mFtx->streams[getStreamIndex()]->time_base) * 1000;
     LOGI("[audio] avcodec_receive_frame...pts: %" PRId64 ", time: %f", mAvFrame->pts, pts)
 
-    int out_nb = (int) av_rescale_rnd(mAvFrame->nb_samples, 44100, mAvFrame->sample_rate, AV_ROUND_UP);
-    int out_channels = av_get_channel_layout_nb_channels(AV_CH_LAYOUT_STEREO);
-    int size = av_samples_get_buffer_size(nullptr, out_channels, out_nb, AV_SAMPLE_FMT_S16, 1);
-    if (mAudioBuffer == nullptr) {
-        LOGI("audio frame, out_channels: %d, out_nb: %d, size: %d, ", out_channels, out_nb, size)
-        mAudioBuffer = (uint8_t *) av_malloc(size);
-    }
-
-    int nb = swr_convert(
-            mSwrContext,
-            &mAudioBuffer,
-            size / out_channels,
-            (const uint8_t**)mAvFrame->data,
-            mAvFrame->nb_samples
-            );
+    int nb = resample(mAvFrame);
 
     updateTimestamp(mAvFrame);
+
+    int out_channels = av_get_channel_layout_nb_channels(AV_CH_LAYOUT_STEREO);
 
     if (nb > 0) {
         mDataSize = nb * out_channels * av_get_bytes_per_sample(AV_SAMPLE_FMT_S16);
@@ -112,6 +101,25 @@ int AudioDecoder::decode(AVPacket *avPacket) {
     LOGI("swr_convert, dataSize: %d, nb: %d, out_channels: %d", mDataSize, nb, out_channels)
 
     return 0;
+}
+
+int AudioDecoder::resample(AVFrame *frame) {
+    int out_nb = (int) av_rescale_rnd(frame->nb_samples, 44100, frame->sample_rate, AV_ROUND_UP);
+    int out_channels = av_get_channel_layout_nb_channels(AV_CH_LAYOUT_STEREO);
+    int size = av_samples_get_buffer_size(nullptr, out_channels, out_nb, AV_SAMPLE_FMT_S16, 1);
+    if (mAudioBuffer == nullptr) {
+        LOGI("audio frame, out_channels: %d, out_nb: %d, size: %d, ", out_channels, out_nb, size)
+        mAudioBuffer = (uint8_t *) av_malloc(size);
+    }
+
+    int nb = swr_convert(
+            mSwrContext,
+            &mAudioBuffer,
+            size / out_channels,
+            (const uint8_t**)frame->data,
+            frame->nb_samples
+    );
+    return nb;
 }
 
 void AudioDecoder::updateTimestamp(AVFrame *frame) {

@@ -7,8 +7,8 @@
 #include "BaseDecoder.h"
 
 extern "C" {
-#include "libswresample/swresample.h"
-#include "libavutil/imgutils.h"
+#include "../vendor/ffmpeg/libswresample/swresample.h"
+#include "../vendor/ffmpeg/libavutil/imgutils.h"
 }
 
 class AudioDecoder: public BaseDecoder {
@@ -45,11 +45,11 @@ private:
 
     const AVCodec *mAudioCodec = nullptr;
 
-    AVFrame *mAvFrame = nullptr;
-
     SwrContext *mSwrContext = nullptr;
 
     void updateTimestamp(AVFrame *frame);
+
+    int resample(AVFrame *frame);
 };
 
 

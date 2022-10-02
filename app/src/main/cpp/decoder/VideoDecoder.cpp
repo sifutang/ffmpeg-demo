@@ -124,14 +124,18 @@ bool VideoDecoder::prepare() {
     mAvFrame = av_frame_alloc();
     mStartTimeMsForSync = -1;
     LOGI("codec name: %s", mVideoCodec->name)
+
+    initFilters();
+
     return true;
 }
 
 int VideoDecoder::decode(AVPacket *avPacket) {
     int res = avcodec_send_packet(mCodecContext, avPacket);
     bool isKeyFrame = avPacket->flags & AV_PKT_FLAG_KEY;
-    LOGI("[video] avcodec_send_packet...pts: %" PRId64 ", dts: %" PRId64 ", isKeyFrame: %d, res: %d",
-         avPacket->pts, avPacket->dts, isKeyFrame, res)
+    int index = av_index_search_timestamp(mFtx->streams[getStreamIndex()], avPacket->pts, AVSEEK_FLAG_BACKWARD);
+    LOGI("[video] avcodec_send_packet...pts: %" PRId64 ", dts: %" PRId64 ", isKeyFrame: %d, res: %d, index: %d",
+         avPacket->pts, avPacket->dts, isKeyFrame, res, index)
     if (res == AVERROR_EOF || res == AVERROR(EINVAL)) {
         return res;
     }
@@ -152,57 +156,81 @@ int VideoDecoder::decode(AVPacket *avPacket) {
 
     LOGI("[video] avcodec_receive_frame...pts: %" PRId64 ", format: %d", mAvFrame->pts, mAvFrame->format)
 
-    updateTimestamp(mAvFrame);
+    AVFrame *finalFrame = mAvFrame;
+    if (mEnableFilter && mBufferSinkCtx && mBufferScrCtx) {
+        int ret = av_buffersrc_add_frame_flags(mBufferScrCtx, mAvFrame, AV_BUFFERSRC_FLAG_KEEP_REF);
+        LOGI("av_buffersrc_add_frame_flags, ret: %d", ret)
+        if (mFilterAvFrame == nullptr) {
+            mFilterAvFrame = av_frame_alloc();
+        }
+        ret = av_buffersink_get_frame(mBufferSinkCtx, mFilterAvFrame);
+        LOGI("av_buffersink_get_frame, ret: %d, format: %d", ret, mFilterAvFrame->format)
+        if (res >= 0) {
+            finalFrame = mFilterAvFrame;
+        }
+    }
 
-    if (mAvFrame->pts >= mSeekPos) {
+    updateTimestamp(finalFrame);
+
+    if (finalFrame->pts >= mSeekPos) {
         mSeekPos = INT64_MAX;
         mSeekEndTimeMs = getCurrentTimeMs();
         int64_t precisionSeekConsume = mSeekEndTimeMs - mSeekStartTimeMs;
         LOGE("[video] avcodec_receive_frame...pts: %" PRId64 ", precision seek consume: %" PRId64, mAvFrame->pts, precisionSeekConsume)
     }
 
-    if (mAvFrame->format == AV_PIX_FMT_YUV420P || mAvFrame->format == AV_PIX_FMT_NV12 || mAvFrame->format == hw_pix_fmt) {
-        if (mOnFrameArrivedListener) {
-            mOnFrameArrivedListener(mAvFrame);
-        }
-    } else if (mAvFrame->format != AV_PIX_FMT_YUV420P) {
+    if (finalFrame->format == AV_PIX_FMT_YUV420P || mAvFrame->format == AV_PIX_FMT_NV12 || mAvFrame->format == hw_pix_fmt) {
+        notifyFrameArrived(finalFrame);
+    } else if (finalFrame->format != AV_PIX_FMT_NONE) {
         AVFrame *swFrame = av_frame_alloc();
-        int size = av_image_get_buffer_size(AV_PIX_FMT_YUV420P, mAvFrame->width, mAvFrame->height, 1);
+        int size = av_image_get_buffer_size(AV_PIX_FMT_YUV420P, finalFrame->width, finalFrame->height, 1);
         auto *buffer = static_cast<uint8_t *>(av_malloc(size * sizeof(uint8_t)));
-        av_image_fill_arrays(swFrame->data, swFrame->linesize, buffer, AV_PIX_FMT_YUV420P, mAvFrame->width, mAvFrame->height, 1);
+        av_image_fill_arrays(swFrame->data, swFrame->linesize, buffer, AV_PIX_FMT_YUV420P, finalFrame->width, finalFrame->height, 1);
 
-        if (mSwsContext == nullptr) {
-            mSwsContext = sws_getContext(mAvFrame->width, mAvFrame->height, AVPixelFormat(mAvFrame->format),
-                                         mAvFrame->width, mAvFrame->height, AV_PIX_FMT_YUV420P,
-                                         SWS_FAST_BILINEAR,nullptr, nullptr, nullptr);
-            if (!mSwsContext) {
-                av_frame_free(&swFrame);
-                av_freep(&swFrame);
-                av_free(buffer);
-                return -1;
-            }
+        if (swsScale(finalFrame, swFrame) > 0) {
+            notifyFrameArrived(swFrame);
         }
 
-        // transform
-        sws_scale(mSwsContext,
-                  reinterpret_cast<const uint8_t *const *>(mAvFrame->data),
-                  mAvFrame->linesize,
-                  0,
-                  mAvFrame->height,
-                  swFrame->data,
-                  swFrame->linesize
-        );
-
-        if (mOnFrameArrivedListener) {
-            mOnFrameArrivedListener(swFrame);
-        }
         av_frame_free(&swFrame);
         av_freep(&swFrame);
         av_free(buffer);
+    } else {
+        LOGE("[video] frame format is AV_PIX_FMT_NONE")
     }
+
+    av_frame_unref(mFilterAvFrame);
     av_frame_unref(mAvFrame);
 
     return res;
+}
+
+int VideoDecoder::swsScale(AVFrame *srcFrame, AVFrame *swFrame) {
+    if (mSwsContext == nullptr) {
+        mSwsContext = sws_getContext(srcFrame->width, srcFrame->height, AVPixelFormat(srcFrame->format),
+                                     srcFrame->width, srcFrame->height, AV_PIX_FMT_YUV420P,
+                                     SWS_FAST_BILINEAR,nullptr, nullptr, nullptr);
+        if (!mSwsContext) {
+            return -1;
+        }
+    }
+
+    // transform
+    int ret = sws_scale(mSwsContext,
+              reinterpret_cast<const uint8_t *const *>(srcFrame->data),
+              srcFrame->linesize,
+              0,
+              srcFrame->height,
+              swFrame->data,
+              swFrame->linesize
+    );
+
+    return ret;
+}
+
+void VideoDecoder::notifyFrameArrived(AVFrame *frame) {
+    if (mOnFrameArrivedListener) {
+        mOnFrameArrivedListener(frame);
+    }
 }
 
 int64_t VideoDecoder::getTimestamp() const {
@@ -279,6 +307,26 @@ void VideoDecoder::release() {
         LOGI("sws context...release")
     }
 
+    if (mFilterAvFrame != nullptr) {
+        av_frame_free(&mFilterAvFrame);
+        av_freep(&mFilterAvFrame);
+    }
+
+    if (mFilterInputs != nullptr) {
+        avfilter_inout_free(&mFilterInputs);
+        mFilterInputs = nullptr;
+    }
+
+    if (mFilterOutputs != nullptr) {
+        avfilter_inout_free(&mFilterOutputs);
+        mFilterOutputs = nullptr;
+    }
+
+    if (mFilterGraph != nullptr) {
+        avfilter_graph_free(&mFilterGraph);
+        mFilterGraph = nullptr;
+    }
+
     if (mMediaCodecContext != nullptr) {
         av_mediacodec_default_free(mCodecContext);
         mMediaCodecContext = nullptr;
@@ -297,5 +345,87 @@ void VideoDecoder::release() {
         mCodecContext = nullptr;
         LOGI("codec...release")
     }
+}
+
+void VideoDecoder::initFilters() {
+    const AVFilter *bufferSrc = avfilter_get_by_name("buffer");
+    const AVFilter *bufferSink = avfilter_get_by_name("buffersink");
+
+    mFilterOutputs = avfilter_inout_alloc();
+    mFilterInputs = avfilter_inout_alloc();
+    mFilterGraph = avfilter_graph_alloc();
+    if (!mFilterOutputs || !mFilterInputs || !mFilterGraph) {
+        LOGE("initFilters failed")
+        return;
+    }
+
+    int ret;
+    do {
+        char args[512];
+        snprintf(args, sizeof(args),
+                 "video_size=%dx%d:pix_fmt=%d:time_base=%d/%d:pixel_aspect=%d/%d",
+                 mCodecContext->width, mCodecContext->height, mCodecContext->pix_fmt,
+                 mTimeBase.num, mTimeBase.den,
+                 mCodecContext->sample_aspect_ratio.num, mCodecContext->sample_aspect_ratio.den);
+        LOGE("avfilter_graph_create_filter, args: %s", args)
+        ret = avfilter_graph_create_filter(&mBufferScrCtx, bufferSrc, "in", args, nullptr, mFilterGraph);
+        if (ret < 0) {
+            LOGE("Cannot create buffer source, ret: %d", ret)
+            break;
+        }
+
+        ret = avfilter_graph_create_filter(&mBufferSinkCtx, bufferSink, "out", nullptr, nullptr, mFilterGraph);
+        if (ret < 0) {
+            LOGE("Cannot create buffer sink, ret: %d", ret)
+            break;
+        }
+
+        enum AVPixelFormat pix_fmts[] = {AV_PIX_FMT_YUV420P, AV_PIX_FMT_NONE};
+        ret = av_opt_set_int_list(mBufferSinkCtx, "pix_fmts", pix_fmts,
+                                  AV_PIX_FMT_NONE, AV_OPT_SEARCH_CHILDREN);
+        if(ret < 0) {
+            LOGE("set output pixel format failed, err=%d", ret);
+            break;
+        }
+
+        mFilterOutputs->name = av_strdup("in");
+        mFilterOutputs->filter_ctx = mBufferScrCtx;
+        mFilterOutputs->pad_idx = 0;
+        mFilterOutputs->next = nullptr;
+
+        mFilterInputs->name = av_strdup("out");
+        mFilterInputs->filter_ctx = mBufferSinkCtx;
+        mFilterInputs->pad_idx = 0;
+        mFilterInputs->next = nullptr;
+
+        // ffmpeg -h filter=drawgrid
+        std::string filterDesc = "drawgrid=w=iw/3:h=ih/3:t=2:c=white@0.5";
+        ret = avfilter_graph_parse_ptr(mFilterGraph, filterDesc.c_str(), &mFilterInputs, &mFilterOutputs, nullptr);
+        LOGI("avfilter_graph_parse_ptr, ret: %d", ret)
+        if (ret < 0) {
+            break;
+        }
+
+        ret = avfilter_graph_config(mFilterGraph, nullptr);
+        LOGI("avfilter_graph_config, ret: %d", ret)
+    } while (false);
+
+    if (ret < 0) {
+        avfilter_inout_free(&mFilterInputs);
+        mFilterInputs = nullptr;
+        avfilter_inout_free(&mFilterOutputs);
+        mFilterOutputs = nullptr;
+
+        mBufferScrCtx = nullptr;
+        mBufferSinkCtx = nullptr;
+
+        avfilter_graph_free(&mFilterGraph);
+        mFilterGraph = nullptr;
+        LOGE("initFilters failed, clean ctx")
+    }
+}
+
+void VideoDecoder::enableGridFilter(bool enable) {
+    mEnableFilter = enable;
 }
 
