@@ -1,5 +1,5 @@
 # ffmpeg-demo
-基于FFMpeg5.0.1版本的学习型DEMO
+基于FFMpeg5.0.1版本的学习型Demo
 
 文章原创首发于微信公众号“雪月清的随笔”，欢迎关注
 
@@ -20,3 +20,7 @@
 [Android FFmpeg系列08--seek和精准seek](https://mp.weixin.qq.com/s/mSJJdsU8b3HlSq-SgwVl_g)
 
 [Android FFmpeg系列09--抽帧和快速抽帧](https://mp.weixin.qq.com/s/sCGnlxCigKSZwLhuowCk8w)
+
+[FFmpeg filter浅析--上篇](https://mp.weixin.qq.com/s/6PosJFajEvj4sWId_646MQ)
+
+[FFmpeg filter浅析--中篇](https://mp.weixin.qq.com/s/cQoFUByosBG11U770UHopA)
