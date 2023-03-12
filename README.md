@@ -24,3 +24,9 @@
 [FFmpeg filter浅析--上篇](https://mp.weixin.qq.com/s/6PosJFajEvj4sWId_646MQ)
 
 [FFmpeg filter浅析--中篇](https://mp.weixin.qq.com/s/cQoFUByosBG11U770UHopA)
+
+[FFmpeg filter浅析--下篇](https://mp.weixin.qq.com/s/Cz9-KtW1iOLjzHIyC1kstQ)
+
+[FFmpeg系列连载阶段性总结](https://mp.weixin.qq.com/s/B8kqqlXujaIi2KtSWsmA5g)
+
+[编译ffplay并导入IDE断点调试](https://mp.weixin.qq.com/s/hJlRr1MNRuU5QAjTD3ehxw)
