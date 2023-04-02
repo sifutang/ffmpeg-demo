@@ -131,30 +131,36 @@ bool VideoDecoder::prepare() {
 }
 
 int VideoDecoder::decode(AVPacket *avPacket) {
-    int res = avcodec_send_packet(mCodecContext, avPacket);
-    bool isKeyFrame = avPacket->flags & AV_PKT_FLAG_KEY;
-    int index = av_index_search_timestamp(mFtx->streams[getStreamIndex()], avPacket->pts, AVSEEK_FLAG_BACKWARD);
-    LOGI("[video] avcodec_send_packet...pts: %" PRId64 ", dts: %" PRId64 ", isKeyFrame: %d, res: %d, index: %d",
-         avPacket->pts, avPacket->dts, isKeyFrame, res, index)
-    if (res == AVERROR_EOF || res == AVERROR(EINVAL)) {
-        return res;
-    }
-
+    bool resent;
+    int res;
     do {
-        res = avcodec_receive_frame(mCodecContext, mAvFrame);
-        if (res != 0) {
-            LOGE("[video] avcodec_receive_frame err: %d", res)
+        res = avcodec_send_packet(mCodecContext, avPacket);
+
+        bool isKeyFrame = avPacket->flags & AV_PKT_FLAG_KEY;
+        LOGI("[video] avcodec_send_packet...pts: %" PRId64 ", dts: %" PRId64 ", isKeyFrame: %d, res: %d",
+             avPacket->pts, avPacket->dts, isKeyFrame, res)
+        if (res == AVERROR_EOF || res == AVERROR(EINVAL)) {
+            LOGE("[video] avcodec_send_packet err: %d", res)
+            break;
         }
-        // todo 有点奇怪，但是这样解码出来才对，不会丢帧，oppo reno ace
-    } while (mUseHwDecode && res == AVERROR(EAGAIN));
+
+        // avcodec_send_packet的-11表示要先读output，然后pkt需要重发
+        resent = res == AVERROR(EAGAIN);
+
+        // avcodec_receive_frame的-11，表示需要发新帧
+        res = avcodec_receive_frame(mCodecContext, mAvFrame);
+
+        if (res != 0) {
+            av_frame_unref(mAvFrame);
+            LOGE("[video] avcodec_receive_frame err: %d, resent: %d", res, resent)
+        }
+    } while (resent);
 
     if (res != 0) {
-        LOGE("[video] avcodec_receive_frame err: %d", res)
-        av_frame_unref(mAvFrame);
         return res;
     }
 
-    LOGI("[video] avcodec_receive_frame...pts: %" PRId64 ", format: %d", mAvFrame->pts, mAvFrame->format)
+    LOGI("[video] avcodec_receive_frame...pts: %" PRId64 ", format: %d, need retry: %d", mAvFrame->pts, mAvFrame->format, resent)
 
     AVFrame *finalFrame = mAvFrame;
     if (mEnableFilter && mBufferSinkCtx && mBufferScrCtx) {
