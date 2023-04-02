@@ -30,3 +30,5 @@
 [FFmpeg系列连载阶段性总结](https://mp.weixin.qq.com/s/B8kqqlXujaIi2KtSWsmA5g)
 
 [编译ffplay并导入IDE断点调试](https://mp.weixin.qq.com/s/hJlRr1MNRuU5QAjTD3ehxw)
+
+[Android FFmpeg系列10--seek优化](https://mp.weixin.qq.com/s/XVN39t_vHn8gaG_ATwaDGA)
