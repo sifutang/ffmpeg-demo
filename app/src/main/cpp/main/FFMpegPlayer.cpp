@@ -312,7 +312,10 @@ void FFMpegPlayer::VideoDecodeLoop() {
         if (packet != nullptr) {
             int ret = mVideoPacketQueue->popTo(packet);
             if (ret == 0) {
-                ret = mVideoDecoder->decode(packet);
+                do {
+                    ret = mVideoDecoder->decode(packet);
+                } while (mVideoDecoder->isNeedResent());
+
                 av_packet_free(&packet);
                 av_freep(&packet);
                 if (ret == AVERROR_EOF) {

@@ -123,6 +123,7 @@ bool VideoDecoder::prepare() {
 
     mAvFrame = av_frame_alloc();
     mStartTimeMsForSync = -1;
+    mRetryReceiveCount = 30;
     LOGI("codec name: %s", mVideoCodec->name)
 
     initFilters();
@@ -131,36 +132,32 @@ bool VideoDecoder::prepare() {
 }
 
 int VideoDecoder::decode(AVPacket *avPacket) {
-    bool resent;
-    int res;
-    do {
-        res = avcodec_send_packet(mCodecContext, avPacket);
+    // 主动塞到队列中的flush帧
+    bool isEof = avPacket->size == 0 && avPacket->data == nullptr;
+    int sendRes = avcodec_send_packet(mCodecContext, avPacket);
 
-        bool isKeyFrame = avPacket->flags & AV_PKT_FLAG_KEY;
-        LOGI("[video] avcodec_send_packet...pts: %" PRId64 ", dts: %" PRId64 ", isKeyFrame: %d, res: %d",
-             avPacket->pts, avPacket->dts, isKeyFrame, res)
-        if (res == AVERROR_EOF || res == AVERROR(EINVAL)) {
-            LOGE("[video] avcodec_send_packet err: %d", res)
-            break;
-        }
+    bool isKeyFrame = avPacket->flags & AV_PKT_FLAG_KEY;
+    LOGI("[video] avcodec_send_packet...pts: %" PRId64 ", dts: %" PRId64 ", isKeyFrame: %d, res: %d, isEof: %d", avPacket->pts, avPacket->dts, isKeyFrame, sendRes, isEof)
 
-        // avcodec_send_packet的-11表示要先读output，然后pkt需要重发
-        resent = res == AVERROR(EAGAIN);
+    // avcodec_send_packet的-11表示要先读output，然后pkt需要重发
+    mNeedResent = sendRes == AVERROR(EAGAIN);
 
-        // avcodec_receive_frame的-11，表示需要发新帧
-        res = avcodec_receive_frame(mCodecContext, mAvFrame);
+    // avcodec_receive_frame的-11，表示需要发新帧
+    int receiveRes = avcodec_receive_frame(mCodecContext, mAvFrame);
 
-        if (res != 0) {
-            av_frame_unref(mAvFrame);
-            LOGE("[video] avcodec_receive_frame err: %d, resent: %d", res, resent)
-        }
-    } while (resent);
-
-    if (res != 0) {
-        return res;
+    if (isEof && receiveRes != AVERROR_EOF && mRetryReceiveCount >= 0) {
+        mNeedResent = true;
+        mRetryReceiveCount--;
+        LOGE("[video] send eof, not receive eof...retry count: %" PRId64, mRetryReceiveCount)
     }
 
-    LOGI("[video] avcodec_receive_frame...pts: %" PRId64 ", format: %d, need retry: %d", mAvFrame->pts, mAvFrame->format, resent)
+    if (receiveRes != 0) {
+        LOGE("[video] avcodec_receive_frame err: %d, resent: %d", receiveRes, mNeedResent)
+        av_frame_unref(mAvFrame);
+        return receiveRes;
+    }
+
+    LOGI("[video] avcodec_receive_frame...pts: %" PRId64 ", format: %d, need retry: %d", mAvFrame->pts, mAvFrame->format, mNeedResent)
 
     AVFrame *finalFrame = mAvFrame;
     if (mEnableFilter && mBufferSinkCtx && mBufferScrCtx) {
@@ -171,7 +168,7 @@ int VideoDecoder::decode(AVPacket *avPacket) {
         }
         ret = av_buffersink_get_frame(mBufferSinkCtx, mFilterAvFrame);
         LOGI("av_buffersink_get_frame, ret: %d, format: %d", ret, mFilterAvFrame->format)
-        if (res >= 0) {
+        if (ret >= 0) {
             finalFrame = mFilterAvFrame;
         }
     }
@@ -207,7 +204,7 @@ int VideoDecoder::decode(AVPacket *avPacket) {
     av_frame_unref(mFilterAvFrame);
     av_frame_unref(mAvFrame);
 
-    return res;
+    return receiveRes;
 }
 
 int VideoDecoder::swsScale(AVFrame *srcFrame, AVFrame *swFrame) {

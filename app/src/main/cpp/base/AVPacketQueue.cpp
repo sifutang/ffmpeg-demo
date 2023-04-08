@@ -42,6 +42,14 @@ int AVPacketQueue::popTo(AVPacket *packet) {
     if (ref != 0) {
         LOGE("[AVPacketQueue], popTo failed, ref: %d", ref);
     }
+
+    // flush packet
+    if (pkt->size == 0 && pkt->data == nullptr) {
+        // av_packet_ref出来后，packet->data不为nullptr了，这里强制reset下
+        packet->size = 0;
+        packet->data = nullptr;
+    }
+
     av_packet_free(&pkt);
     av_free(pkt);
     mQueue.pop();

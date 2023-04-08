@@ -32,6 +32,8 @@ public:
 
     virtual void release();
 
+    bool isNeedResent();
+
     int getStreamIndex() const;
 
     AVRational getTimebase() const;
@@ -54,6 +56,10 @@ protected:
     std::function<void(int, std::string &)> mErrorMsgListener = nullptr;
 
     std::function<void(AVFrame *)> mOnFrameArrivedListener = nullptr;
+
+    bool mNeedResent = false;
+
+    int64_t mRetryReceiveCount = 30;
 
 private:
     int mStreamIndex = -1;

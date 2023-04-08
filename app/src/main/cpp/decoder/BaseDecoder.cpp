@@ -56,3 +56,7 @@ void BaseDecoder::flush() {
         avcodec_flush_buffers(mCodecContext);
     }
 }
+
+bool BaseDecoder::isNeedResent() {
+    return mNeedResent;
+}
