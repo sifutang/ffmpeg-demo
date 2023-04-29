@@ -32,3 +32,5 @@
 [编译ffplay并导入IDE断点调试](https://mp.weixin.qq.com/s/hJlRr1MNRuU5QAjTD3ehxw)
 
 [Android FFmpeg系列10--seek优化](https://mp.weixin.qq.com/s/XVN39t_vHn8gaG_ATwaDGA)
+
+[Android FFmpeg系列11--解码遇到EAGAIN的正确处理姿势](https://mp.weixin.qq.com/s/c7VZ53M9t7rSLoWB5WVIVA)

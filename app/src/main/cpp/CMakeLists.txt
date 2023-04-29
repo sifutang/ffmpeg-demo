@@ -99,6 +99,8 @@ add_library( # Sets the name of the library.
         utils/ImageDef.h
         utils/CommonUtils.h
         utils/FFMpegUtils.cpp
+        utils/MutexObj.cpp
+        utils/TraceUtils.cpp
 
         main/FFMpegPlayer.cpp
         native-lib.cpp

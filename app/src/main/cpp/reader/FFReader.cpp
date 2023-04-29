@@ -92,6 +92,9 @@ int FFReader::prepare() {
         mMediaInfo.video_time_base = mFtx->streams[mCurStreamIndex]->time_base;
         mMediaInfo.width = codecContext->width;
         mMediaInfo.height = codecContext->height;
+        if (mSkipNonRefFrame) {
+            codecContext->skip_frame = AVDISCARD_NONREF;
+        }
     } else if (type == Track_Audio) {
         mMediaInfo.audioIndex = mAudioIndex;
         mMediaInfo.audio_time_base = mFtx->streams[mCurStreamIndex]->time_base;
@@ -160,4 +163,8 @@ double FFReader::getDuration() {
     int64_t duration = mFtx->streams[mCurStreamIndex]->duration;
     AVRational time_base = mFtx->streams[mCurStreamIndex]->time_base;
     return duration * av_q2d(time_base);
+}
+
+void FFReader::enableSkipNonRefFrame(bool enable) {
+    mSkipNonRefFrame = enable;
 }

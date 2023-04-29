@@ -2,10 +2,8 @@ package com.xyq.ffmpegdemo
 
 import android.Manifest
 import android.app.ActionBar.LayoutParams
-import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.graphics.Bitmap
 import android.os.*
 import android.util.Log
 import android.view.MotionEvent
@@ -14,20 +12,27 @@ import android.widget.LinearLayout
 import android.widget.SeekBar
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.res.ResourcesCompat
+import androidx.lifecycle.ViewModelProvider
 import com.xyq.ffmpegdemo.databinding.ActivityMainBinding
+import com.xyq.ffmpegdemo.model.ButtonItemModel
+import com.xyq.ffmpegdemo.model.ButtonItemViewModel
+import com.xyq.ffmpegdemo.model.VideoThumbnailViewModel
 import com.xyq.ffmpegdemo.player.FFPlayer
-import com.xyq.ffmpegdemo.utils.FFMpegUtils
+import com.xyq.ffmpegdemo.utils.CommonUtils
 import com.xyq.ffmpegdemo.utils.FileUtils
-import java.nio.ByteBuffer
-import kotlin.collections.ArrayList
-import kotlin.concurrent.thread
+import com.xyq.ffmpegdemo.utils.TraceUtils
+import java.util.concurrent.Executors
 
 class MainActivity : AppCompatActivity() {
 
     companion object {
         private const val TAG = "MainActivity"
         private const val VIDEO_THUMBNAIL_SIZE = 5
-        private val VIDEO_SOURCE_PATH_ARR = arrayOf("oceans.mp4", "av_sync_test.mp4")
+        private val VIDEO_SOURCE_PATH_ARR = arrayOf(
+            "oceans.mp4",
+            "av_sync_test.mp4",
+            "hdr10.mp4"
+        )
         init {
             System.loadLibrary("ffmpegdemo")
         }
@@ -36,6 +41,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var mBinding: ActivityMainBinding
     private lateinit var mPlayer: FFPlayer
     private lateinit var mVideoPath: String
+
+    private var mVideoPathForThumbnail = ""
     private var mThumbnailViews = ArrayList<ImageView>()
 
     private var mHasPermission = false
@@ -43,38 +50,59 @@ class MainActivity : AppCompatActivity() {
     private var mDuration = -1.0
     private var mCurVideoIndex = -1
 
+    private var mExecutors = Executors.newFixedThreadPool(2)
+
+    private lateinit var mVideoThumbnailViewModel: VideoThumbnailViewModel
+    private lateinit var mBtnViewModel: ButtonItemViewModel
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        TraceUtils.beginSection("MainActivity#onCreate")
+        Log.i(TAG, "onCreate: ")
         mBinding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(mBinding.root)
         initViews()
+        initViewModels()
+
+        val text = CommonUtils.generateTextBitmap("雪月清的随笔", 20f, applicationContext)
+        mBinding.imageView.setImageBitmap(text)
 
         mHasPermission = checkPermission()
 
-        mVideoPath = getNextVideoPath()
         mPlayer = FFPlayer(applicationContext, mBinding.glSurfaceView, mBinding.audioVisualizeView)
+
+        // preload video thumbnail
+        mVideoPath = getNextVideoPath()
+        fetchVideoThumbnail(mVideoPath)
+        TraceUtils.endSection()
     }
 
     override fun onResume() {
+        TraceUtils.beginSection("MainActivity#onResume")
         Log.i(TAG, "onResume: ")
         super.onResume()
         if (mHasPermission) {
-            fetchVideoThumbnail(mVideoPath)
             startPlay(mVideoPath)
         }
+        TraceUtils.endSection()
     }
 
     override fun onPause() {
+        TraceUtils.beginSection("MainActivity#onPause")
         Log.i(TAG, "onPause: ")
         super.onPause()
         stopPlay()
+        TraceUtils.endSection()
     }
 
     override fun onDestroy() {
+        TraceUtils.beginSection("MainActivity#onDestroy")
         Log.i(TAG, "onDestroy: ")
         super.onDestroy()
         mPlayer.release()
+        mExecutors.shutdown()
+        TraceUtils.endSection()
     }
 
     override fun onRequestPermissionsResult(
@@ -101,6 +129,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun checkPermission(): Boolean {
+        Log.i(TAG, "checkPermission: ")
         if (checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
             requestPermissions(
                 arrayOf(
@@ -114,6 +143,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun initViews() {
+        Log.i(TAG, "initViews: ")
         mThumbnailViews.clear()
         for (i in 1..VIDEO_THUMBNAIL_SIZE) {
             val imageView = ImageView(this)
@@ -130,7 +160,7 @@ class MainActivity : AppCompatActivity() {
             override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
                 if (fromUser && mDuration > 0) {
                     val timestamp = progress / 100f * mDuration
-                    mBinding.tvTimer.text = calculateTime(timestamp.toInt())
+                    mBinding.tvTimer.text = CommonUtils.getTimeDesc(timestamp.toInt())
                 }
             }
 
@@ -149,29 +179,27 @@ class MainActivity : AppCompatActivity() {
             }
         })
 
-        mBinding.btnPlayer.tag = "play_resume"
         mBinding.btnPlayer.setOnClickListener {
-            if (it.tag == "play_resume") {
-                it.background = ResourcesCompat.getDrawable(resources, R.drawable.play_pause, null)
-                it.tag = "play_pause"
-                mPlayer.pause()
-            } else if (it.tag == "play_pause") {
-                it.background = ResourcesCompat.getDrawable(resources, R.drawable.play_resume, null)
-                it.tag = "play_resume"
-                mPlayer.resume()
+            mBtnViewModel.mPlayLiveData.value?.let {
+                if (!it.isSelected) {
+                    mBtnViewModel.mPlayLiveData.value = ButtonItemModel(R.drawable.play_pause, true)
+                    mPlayer.pause()
+                } else {
+                    mBtnViewModel.mPlayLiveData.value = ButtonItemModel(R.drawable.play_resume, false)
+                    mPlayer.resume()
+                }
             }
         }
 
-        mBinding.btnAudio.tag = "audio_enable"
         mBinding.btnAudio.setOnClickListener {
-            if (it.tag == "audio_enable") {
-                it.background = ResourcesCompat.getDrawable(resources, R.drawable.audio_disable, null)
-                it.tag = "audio_disable"
-                mPlayer.setMute(true)
-            } else if (it.tag == "audio_disable") {
-                it.background = ResourcesCompat.getDrawable(resources, R.drawable.audio_enable, null)
-                it.tag = "audio_enable"
-                mPlayer.setMute(false)
+            mBtnViewModel.mMuteLiveData.value?.let {
+                if (!it.isSelected) {
+                    mBtnViewModel.mMuteLiveData.value = ButtonItemModel(R.drawable.audio_disable, true)
+                    mPlayer.setMute(true)
+                } else {
+                    mBtnViewModel.mMuteLiveData.value = ButtonItemModel(R.drawable.audio_enable, false)
+                    mPlayer.setMute(false)
+                }
             }
         }
 
@@ -186,7 +214,6 @@ class MainActivity : AppCompatActivity() {
 //            }
             stopPlay()
             mVideoPath = getNextVideoPath()
-            fetchVideoThumbnail(mVideoPath)
             startPlay(mVideoPath)
         }
 
@@ -197,17 +224,39 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun initViewModels() {
+        Log.i(TAG, "initViewModels: ")
+        // video thumbnail
+        mVideoThumbnailViewModel = ViewModelProvider(this).get(VideoThumbnailViewModel::class.java)
+        mVideoThumbnailViewModel.mLiveData.observe(this) {
+            Log.i(TAG, "Receive VideoThumbnailViewModel: $it")
+            if (it.isValid() && it.index < mThumbnailViews.size) {
+                mThumbnailViews[it.index].setImageBitmap(it.bitmap)
+            }
+        }
+
+        mBtnViewModel = ViewModelProvider(this).get(ButtonItemViewModel::class.java)
+        // play btn
+        mBtnViewModel.mPlayLiveData.observe(this) {
+            mBinding.btnPlayer.background = ResourcesCompat.getDrawable(resources, it.backgroundResId, null)
+        }
+
+        // audio mute btn
+        mBtnViewModel.mMuteLiveData.observe(this) {
+            mBinding.btnAudio.background = ResourcesCompat.getDrawable(resources, it.backgroundResId, null)
+        }
+    }
+
     private fun startPlay(path: String) {
+        fetchVideoThumbnail(path)
+
         mBinding.seekBar.isEnabled = true
         mBinding.seekBar.progress = 0
 
-        mBinding.btnPlayer.tag = "play_resume"
-        mBinding.btnPlayer.background = ResourcesCompat.getDrawable(resources, R.drawable.play_resume, null)
+        mBtnViewModel.mPlayLiveData.value = ButtonItemModel(R.drawable.play_resume, false)
+        mBtnViewModel.mMuteLiveData.value = ButtonItemModel(R.drawable.audio_enable, false)
 
-        mBinding.btnAudio.tag = "audio_enable"
-        mBinding.btnAudio.background = ResourcesCompat.getDrawable(resources, R.drawable.audio_enable, null)
-
-        thread {
+        mExecutors.submit {
             Log.i(TAG, "startPlay: start")
             mPlayer.prepare(path)
             mDuration = mPlayer.getDuration()
@@ -220,7 +269,7 @@ class MainActivity : AppCompatActivity() {
                         // seek bar: [0, 100]
                         if (!mIsSeeking) {
                             mBinding.seekBar.progress = ((timestamp / mDuration) * 100).toInt()
-                            mBinding.tvTimer.text = calculateTime(timestamp.toInt())
+                            mBinding.tvTimer.text = CommonUtils.getTimeDesc(timestamp.toInt())
                         }
                     }
                 }
@@ -228,8 +277,7 @@ class MainActivity : AppCompatActivity() {
                 override fun onComplete() {
                     runOnUiThread {
                         mBinding.seekBar.progress = 100
-                        mBinding.btnPlayer.tag = "play_pause"
-                        mBinding.btnPlayer.background = ResourcesCompat.getDrawable(resources, R.drawable.play_pause, null)
+                        mBtnViewModel.mPlayLiveData.value = ButtonItemModel(R.drawable.play_pause, true)
                     }
                 }
 
@@ -239,52 +287,25 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun fetchVideoThumbnail(path: String) {
-        thread {
-            val start = System.currentTimeMillis()
-            FFMpegUtils.getVideoFrames(path, 0, 0, object : FFMpegUtils.VideoFrameArrivedInterface {
-
-                override fun onFetchStart(duration: Double): DoubleArray {
-                    val count = mThumbnailViews.size
-                    val step = duration / count
-                    val ptsArr = DoubleArray(count)
-                    for (i in 0 until count) {
-                        ptsArr[i] = i * step
-                    }
-                    ptsArr[0] = 1.0 // 演示视频前几帧都是黑屏，此处我们以第1s为起始
-                    Log.e(TAG, "onFetchStart: $duration, ptsArr: ${ptsArr.contentToString()}")
-                    return ptsArr
-                }
-
-                override fun onProgress(frame: ByteBuffer, timestamps: Double, width: Int, height: Int, index: Int): Boolean {
-                    if (path != mVideoPath) {
-                        return false
-                    }
-
-                    val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
-                    bitmap.copyPixelsFromBuffer(frame)
-                    Log.e(TAG, "onProgress: timestamps: $timestamps, width: $width, height: $height, consume: ${System.currentTimeMillis() - start}")
-                    runOnUiThread {
-                        mThumbnailViews[index].setImageBitmap(bitmap)
-                    }
-                    return true
-                }
-
-                override fun onFetchEnd() {
-                    Log.e(TAG, "onFetchEnd: ")
-                }
-            })
+        if (mVideoPathForThumbnail == path) {
+            Log.i(TAG, "fetchVideoThumbnail: has fetch")
+            return
         }
-    }
+        mVideoPathForThumbnail = path
 
-    private fun calculateTime(timeS: Int): String {
-        val hour = timeS / 3600
-        val minute = timeS / 60
-        val second = timeS - hour * 3600 - minute * 60
-        return "${alignment(hour)}:${alignment(minute)}:${alignment(second)}"
-    }
+        var width = mThumbnailViews[0].width
+        width = if (width <= 0) 300 else width
 
-    private fun alignment(time: Int): String {
-        return if (time > 9) "$time" else "0$time"
+        mExecutors.submit {
+            mVideoThumbnailViewModel.loadThumbnail(path, width, 0, mThumbnailViews.size) {
+                TraceUtils.beginAsyncSection("fetchVideoThumbnail", it.index)
+                runOnUiThread {
+                    mVideoThumbnailViewModel.mLiveData.value = it
+                    TraceUtils.endAsyncSection("fetchVideoThumbnail", it.index)
+                }
+                return@loadThumbnail 0
+            }
+        }
     }
 
     private fun stopPlay() {

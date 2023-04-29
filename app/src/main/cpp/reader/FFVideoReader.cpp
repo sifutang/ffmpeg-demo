@@ -3,19 +3,28 @@
 #include "../utils/CommonUtils.h"
 #include "../vendor/libyuv/libyuv.h"
 
-FFVideoReader::FFVideoReader(std::string &path) {
-    mInit = init(path);
-    if (mInit) {
-        mInit = selectTrack(Track_Video);
-    }
-    LOGE("[FFVideoReader], init: %d", mInit)
-}
+FFVideoReader::FFVideoReader() = default;
 
 FFVideoReader::~FFVideoReader() {
     if (mSwsContext != nullptr) {
         sws_freeContext(mSwsContext);
         mSwsContext = nullptr;
     }
+
+    mScaleBufferSize = -1;
+    if (mScaleBuffer != nullptr) {
+        free(mScaleBuffer);
+        mScaleBuffer = nullptr;
+    }
+}
+
+bool FFVideoReader::init(std::string &path) {
+    mInit = FFReader::init(path);
+    if (mInit) {
+        mInit = selectTrack(Track_Video);
+    }
+    LOGE("[FFVideoReader], init: %d", mInit)
+    return mInit;
 }
 
 void FFVideoReader::getFrame(int64_t pts, int width, int height, uint8_t *buffer) {
@@ -37,6 +46,7 @@ void FFVideoReader::getFrame(int64_t pts, int width, int height, uint8_t *buffer
     AVCodecContext *codecContext = getCodecContext();
     MediaInfo mediaInfo = getMediaInfo();
     LOGI("[FFVideoReader], getFrame, origin: %dx%d, dst: %dx%d", mediaInfo.width, mediaInfo.height, width, height)
+    bool needScale = mediaInfo.width != width || mediaInfo.height != height;
 
     AVFrame *frame = av_frame_alloc();
     AVPacket *pkt = av_packet_alloc();
@@ -71,11 +81,39 @@ void FFVideoReader::getFrame(int64_t pts, int width, int height, uint8_t *buffer
 
     if (find) {
         if (frame->format == AV_PIX_FMT_YUV420P) {
-            libyuv::I420ToABGR(frame->data[0], frame->linesize[0],
-                               frame->data[1], frame->linesize[1],
-                               frame->data[2], frame->linesize[2],
-                               buffer, width * 4, width, height);
-        } else if (frame->format != AV_PIX_FMT_RGBA) {
+            if (needScale) {
+                int64_t scaleBufferSize = width * height * 3 / 2;
+                if (mScaleBuffer && scaleBufferSize != mScaleBufferSize) {
+                    free(mScaleBuffer);
+                    mScaleBuffer = nullptr;
+                }
+                mScaleBufferSize = scaleBufferSize;
+                if (mScaleBuffer == nullptr) {
+                    mScaleBuffer = (uint8_t *) malloc(scaleBufferSize);
+                }
+
+                auto scaleBuffer = mScaleBuffer;
+                libyuv::I420Scale(
+                        frame->data[0], frame->linesize[0],
+                        frame->data[1], frame->linesize[1],
+                        frame->data[2], frame->linesize[2],
+                        mediaInfo.width, mediaInfo.height,
+                        scaleBuffer, width,
+                        scaleBuffer + width * height, width / 2,
+                        scaleBuffer + width * height * 5 / 4, width / 2,
+                        width, height, libyuv::kFilterNone);
+
+                libyuv::I420ToABGR(scaleBuffer, width,
+                                   scaleBuffer + width * height, width / 2,
+                                   scaleBuffer + width * height * 5 / 4, width / 2,
+                                   buffer, width * 4, width, height);
+            } else {
+                libyuv::I420ToABGR(frame->data[0], frame->linesize[0],
+                                   frame->data[1], frame->linesize[1],
+                                   frame->data[2], frame->linesize[2],
+                                   buffer, width * 4, width, height);
+            }
+        } else if (frame->format != AV_PIX_FMT_RGBA || (frame->format == AV_PIX_FMT_RGBA && needScale)) {
             AVFrame *swFrame = av_frame_alloc();
             unsigned int size = av_image_get_buffer_size(AV_PIX_FMT_RGBA, width, height, 1);
             auto *rgbaBuffer = static_cast<uint8_t *>(av_malloc(size * sizeof(uint8_t)));
@@ -115,8 +153,6 @@ void FFVideoReader::getFrame(int64_t pts, int width, int height, uint8_t *buffer
             av_frame_free(&swFrame);
             av_freep(&swFrame);
             av_free(rgbaBuffer);
-        } else {
-            memcpy(buffer, frame->data[0], width * height * 4);
         }
     }
 

@@ -1,9 +1,22 @@
 #include <jni.h>
 #include "main/FFMpegPlayer.h"
+#include "utils/TraceUtils.h"
+
+extern "C"
+JNIEXPORT jint JNI_OnLoad(JavaVM* vm, void* reserved) {
+    LOGI("ffmpegdemo JNI_OnLoad")
+    JNIEnv* env;
+    if (vm->GetEnv(reinterpret_cast<void**>(&env), JNI_VERSION_1_6) != JNI_OK) {
+        return JNI_ERR;
+    }
+    TraceUtils::init();
+    return JNI_VERSION_1_6;
+}
 
 extern "C"
 JNIEXPORT jlong JNICALL
 Java_com_xyq_ffmpegdemo_player_FFPlayer_nativeInit(JNIEnv *env, jobject thiz) {
+    ATRACE_CALL();
     auto *player = new FFMpegPlayer();
     player->init(env, thiz);
     return reinterpret_cast<long>(player);
@@ -13,6 +26,7 @@ extern "C"
 JNIEXPORT jboolean JNICALL
 Java_com_xyq_ffmpegdemo_player_FFPlayer_nativePrepare(JNIEnv *env, jobject thiz, jlong handle,
                                                       jstring path, jobject surface) {
+    ATRACE_CALL();
     auto *player = reinterpret_cast<FFMpegPlayer *>(handle);
     const char *c_path = env->GetStringUTFChars(path, nullptr);
     std::string s_path = c_path;
@@ -29,6 +43,7 @@ Java_com_xyq_ffmpegdemo_player_FFPlayer_nativePrepare(JNIEnv *env, jobject thiz,
 extern "C"
 JNIEXPORT void JNICALL
 Java_com_xyq_ffmpegdemo_player_FFPlayer_nativeStart(JNIEnv *env, jobject thiz, jlong handle) {
+    ATRACE_CALL();
     auto *player = reinterpret_cast<FFMpegPlayer *>(handle);
     if (player) {
         player->start();
@@ -38,6 +53,7 @@ Java_com_xyq_ffmpegdemo_player_FFPlayer_nativeStart(JNIEnv *env, jobject thiz, j
 extern "C"
 JNIEXPORT void JNICALL
 Java_com_xyq_ffmpegdemo_player_FFPlayer_nativeStop(JNIEnv *env, jobject thiz, jlong handle) {
+    ATRACE_CALL();
     auto *player = reinterpret_cast<FFMpegPlayer *>(handle);
     if (player) {
         player->stop();
@@ -47,6 +63,7 @@ Java_com_xyq_ffmpegdemo_player_FFPlayer_nativeStop(JNIEnv *env, jobject thiz, jl
 extern "C"
 JNIEXPORT void JNICALL
 Java_com_xyq_ffmpegdemo_player_FFPlayer_nativeRelease(JNIEnv *env, jobject thiz, jlong handle) {
+    ATRACE_CALL();
     auto *player = reinterpret_cast<FFMpegPlayer *>(handle);
     delete player;
 }

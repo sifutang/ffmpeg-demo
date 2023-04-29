@@ -5,9 +5,10 @@
 #include <string>
 #include <sstream>
 #include <ctime>
-#include <pthread.h>
 #include <thread>
+#include <memory.h>
 #include "../utils/Logger.h"
+#include "../utils/MutexObj.h"
 #include "../decoder/VideoDecoder.h"
 #include "../decoder/AudioDecoder.h"
 #include "../base/AVPacketQueue.h"
@@ -27,6 +28,7 @@ typedef struct PlayerJniContext {
     jmethodID onAudioPrepared;
     jmethodID onVideoFrameArrived;
     jmethodID onAudioFrameArrived;
+    jmethodID onPlayCompleted;
 
     void reset() {
         instance = nullptr;
@@ -34,6 +36,7 @@ typedef struct PlayerJniContext {
         onAudioPrepared = nullptr;
         onVideoFrameArrived = nullptr;
         onAudioFrameArrived = nullptr;
+        onPlayCompleted = nullptr;
     }
 
 } PlayerJniContext;
@@ -87,11 +90,9 @@ private:
 
     bool mHasAbort = false;
     bool mIsMute = false;
-    bool mIsReadEof = false;
     bool mIsSeek = false;
 
-    pthread_cond_t mCond{};
-    pthread_mutex_t mMutex{};
+    std::shared_ptr<MutexObj> mMutexObj = nullptr;
 
     volatile double mVideoSeekPos = -1;
     volatile double mAudioSeekPos = -1;
@@ -99,30 +100,26 @@ private:
     std::thread *mReadPacketThread = nullptr;
 
     std::thread *mVideoThread = nullptr;
-    AVPacketQueue *mVideoPacketQueue = nullptr;
-    VideoDecoder *mVideoDecoder = nullptr;
+    std::shared_ptr<AVPacketQueue> mVideoPacketQueue = nullptr;
+    std::shared_ptr<VideoDecoder> mVideoDecoder = nullptr;
 
     std::thread *mAudioThread = nullptr;
-    AVPacketQueue *mAudioPacketQueue = nullptr;
-    AudioDecoder *mAudioDecoder = nullptr;
+    std::shared_ptr<AVPacketQueue> mAudioPacketQueue = nullptr;
+    std::shared_ptr<AudioDecoder> mAudioDecoder = nullptr;
 
     AVFormatContext *mFtx = nullptr;
 
-    void doRender(JNIEnv *env, AVFrame *avFrame, bool isEnd = false);
+    void doRender(JNIEnv *env, AVFrame *avFrame);
 
     int readAvPacketToQueue();
 
-    bool pushPacketToQueue(AVPacket *packet, AVPacketQueue *queue) const;
+    bool pushPacketToQueue(AVPacket *packet, const std::shared_ptr<AVPacketQueue>& queue) const;
 
     void ReadPacketLoop();
 
     void VideoDecodeLoop();
 
     void AudioDecodeLoop();
-
-    void wait();
-
-    void wakeup();
 
     void updatePlayerState(PlayerState state);
 };

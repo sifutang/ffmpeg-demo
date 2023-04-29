@@ -6,8 +6,10 @@
 class FFVideoReader: public FFReader{
 
 public:
-    FFVideoReader(std::string &path);
+    FFVideoReader();
     ~FFVideoReader();
+
+    bool init(std::string &path) override;
 
     void getFrame(int64_t pts, int width, int height, uint8_t *buffer);
 
@@ -18,6 +20,8 @@ private:
 
     SwsContext *mSwsContext = nullptr;
 
+    uint8_t *mScaleBuffer = nullptr;
+    int64_t mScaleBufferSize = -1;
 };
 
 

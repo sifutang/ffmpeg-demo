@@ -1,10 +1,12 @@
 #ifndef FFMPEGDEMO_IMAGEDEF_H
 #define FFMPEGDEMO_IMAGEDEF_H
 
+#define FMT_VIDEO_YUV420        0x00
 #define FMT_VIDEO_NV12          0x01
-#define FMT_VIDEO_YUV420        0x02
+#define FMT_VIDEO_RGBA          0x02
 #define FMT_VIDEO_MEDIACODEC    0x03
-#define FMT_AUDIO_PCM           0x04
+
+#define FMT_AUDIO_PCM           0x00
 
 typedef struct _tag_NativeAvData {
 

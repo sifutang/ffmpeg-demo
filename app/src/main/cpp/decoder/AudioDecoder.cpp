@@ -68,21 +68,24 @@ bool AudioDecoder::prepare() {
 }
 
 int AudioDecoder::decode(AVPacket *avPacket) {
-    int res = avcodec_send_packet(mCodecContext, avPacket);
+    int64_t start = getCurrentTimeMs();
+    int sendRes = avcodec_send_packet(mCodecContext, avPacket);
     int index = av_index_search_timestamp(mFtx->streams[getStreamIndex()], avPacket->pts, AVSEEK_FLAG_BACKWARD);
-    LOGI("[audio] avcodec_send_packet...pts: %" PRId64 ", res: %d, index: %d", avPacket->pts, res, index)
-    if (res == AVERROR_EOF || res == AVERROR(EINVAL)) {
-        return res;
+    LOGI("[audio] avcodec_send_packet...pts: %" PRId64 ", res: %d, index: %d", avPacket->pts, sendRes, index)
+
+    // avcodec_send_packet的-11表示要先读output，然后pkt需要重发
+    mNeedResent = sendRes == AVERROR(EAGAIN);
+
+    // avcodec_receive_frame的-11，表示需要发新帧
+    int receiveRes = avcodec_receive_frame(mCodecContext, mAvFrame);
+    if (receiveRes != 0) {
+        LOGE("[audio] avcodec_receive_frame err: %d, resent: %d", receiveRes, mNeedResent)
+        av_frame_unref(mAvFrame);
+        return receiveRes;
     }
 
-    res = avcodec_receive_frame(mCodecContext, mAvFrame);
-    if (res != 0) {
-        LOGE("[audio] avcodec_receive_frame err: %d", res)
-        av_frame_unref(mAvFrame);
-        return res;
-    }
-    auto pts = mAvFrame->pts * av_q2d(mFtx->streams[getStreamIndex()]->time_base) * 1000;
-    LOGI("[audio] avcodec_receive_frame...pts: %" PRId64 ", time: %f", mAvFrame->pts, pts)
+    auto ptsMs = mAvFrame->pts * av_q2d(mFtx->streams[getStreamIndex()]->time_base) * 1000;
+    LOGI("[audio] avcodec_receive_frame...pts: %" PRId64 ", time: %f, need retry: %d", mAvFrame->pts, ptsMs, mNeedResent)
 
     int nb = resample(mAvFrame);
 
@@ -100,6 +103,8 @@ int AudioDecoder::decode(AVPacket *avPacket) {
     mNeedFlushRender = false;
     LOGI("swr_convert, dataSize: %d, nb: %d, out_channels: %d", mDataSize, nb, out_channels)
 
+    int64_t end = getCurrentTimeMs();
+    LOGW("[audio] decode consume: %" PRId64, (end - start))
     return 0;
 }
 
@@ -127,9 +132,9 @@ void AudioDecoder::updateTimestamp(AVFrame *frame) {
         LOGE("update audio start time")
         mStartTimeMsForSync = getCurrentTimeMs();
     }
-    mCurTimeStampMs = frame->pts;
+
     // s -> ms
-    mCurTimeStampMs = (int64_t)(mCurTimeStampMs * av_q2d(mTimeBase) * 1000);
+    mCurTimeStampMs = (int64_t)(frame->pts * av_q2d(mTimeBase) * 1000);
 
     if (mFixStartTime) {
         mStartTimeMsForSync = getCurrentTimeMs() - mCurTimeStampMs;
@@ -149,6 +154,8 @@ void AudioDecoder::avSync(AVFrame *frame) {
     LOGI("[audio] avSync, pts: %" PRId64 "ms, diff: %" PRId64 "ms", mCurTimeStampMs, diff)
     if (diff > 0) {
         av_usleep(diff * 1000);
+    } else {
+        LOGE("avSync warning")
     }
 }
 

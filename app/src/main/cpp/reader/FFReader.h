@@ -37,7 +37,7 @@ public:
     FFReader();
     virtual ~FFReader();
 
-    bool init(std::string &path);
+    virtual bool init(std::string &path);
 
     bool selectTrack(TrackType type);
 
@@ -62,6 +62,8 @@ public:
 
     void flush();
 
+    void enableSkipNonRefFrame(bool enable);
+
     AVCodecContext *getCodecContext();
 
     MediaInfo getMediaInfo();
@@ -80,6 +82,8 @@ private:
     TrackType mCurTrackType = Track_Video;
 
     MediaInfo mMediaInfo;
+
+    bool mSkipNonRefFrame = false;
 
     int prepare();
 };

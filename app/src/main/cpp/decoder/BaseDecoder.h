@@ -55,11 +55,11 @@ protected:
 
     std::function<void(int, std::string &)> mErrorMsgListener = nullptr;
 
-    std::function<void(AVFrame *)> mOnFrameArrivedListener = nullptr;
+    std::function<void(AVFrame *frame)> mOnFrameArrivedListener = nullptr;
 
     bool mNeedResent = false;
 
-    int64_t mRetryReceiveCount = 30;
+    int64_t mRetryReceiveCount = 7;
 
 private:
     int mStreamIndex = -1;

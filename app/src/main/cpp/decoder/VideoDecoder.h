@@ -81,8 +81,6 @@ private:
 
     int swsScale(AVFrame *srcFrame, AVFrame *swFrame);
 
-    void notifyFrameArrived(AVFrame *frame);
-
     void initFilters();
 
 };

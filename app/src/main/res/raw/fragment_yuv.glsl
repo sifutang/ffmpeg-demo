@@ -1,6 +1,8 @@
 precision mediump float;
+
 varying vec2 vCoordinate;
 varying float vProgress;
+
 uniform sampler2D samplerY;
 uniform sampler2D samplerU;
 uniform sampler2D samplerV;
@@ -15,10 +17,5 @@ void main() {
     rgb.g = y - 0.344 * u - 0.714 * v;
     rgb.b = y + 1.770 * u;
 
-    if (vCoordinate.x > vProgress) {
-        gl_FragColor = vec4(rgb, 1.0f);
-    } else {
-        float h = dot(rgb, vec3(0.3, 0.59, 0.21));
-        gl_FragColor = vec4(h, h, h, 1.0f);
-    }
+    gl_FragColor = vec4(rgb, 1.0);
 }
