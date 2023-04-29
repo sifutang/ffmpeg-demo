@@ -36,7 +36,21 @@ bool VideoDecoder::prepare() {
     mHeight = params->height;
 
     // find decoder
-    if (mUseHwDecode && params->codec_id == AV_CODEC_ID_H264) { // 目前的ffmpeg so还没支持hevc硬解，需要重新build
+    std::string mediacodecName;
+    switch (params->codec_id) {
+        case AV_CODEC_ID_H264:
+            mediacodecName = "h264_mediacodec";
+            break;
+        case AV_CODEC_ID_HEVC:
+            mediacodecName = "hevc_mediacodec";
+            break;
+        default:
+            mUseHwDecode = false;
+            LOGE("format(%d) not support hw decode, maybe rebuild ffmpeg so", params->codec_id)
+            break;
+    }
+
+    if (mUseHwDecode) {
         AVHWDeviceType type = av_hwdevice_find_type_by_name("mediacodec");
         if (type == AV_HWDEVICE_TYPE_NONE) {
             while ((type = av_hwdevice_iterate_types(type)) != AV_HWDEVICE_TYPE_NONE) {
@@ -44,20 +58,20 @@ bool VideoDecoder::prepare() {
             }
         }
 
-        const AVCodec *h264Mediacodec = avcodec_find_decoder_by_name("h264_mediacodec");
-        if (h264Mediacodec) {
-            LOGE("find h264_mediacodec")
+        const AVCodec *mediacodec = avcodec_find_decoder_by_name(mediacodecName.c_str());
+        if (mediacodec) {
+            LOGE("find %s", mediacodecName.c_str())
             for (int i = 0; ; ++i) {
-                const AVCodecHWConfig *config = avcodec_get_hw_config(h264Mediacodec, i);
+                const AVCodecHWConfig *config = avcodec_get_hw_config(mediacodec, i);
                 if (!config) {
-                    LOGE("Decoder: %s does not support device type: %s", h264Mediacodec->name,
+                    LOGE("Decoder: %s does not support device type: %s", mediacodec->name,
                          av_hwdevice_get_type_name(type))
                     break;
                 }
                 if (config->methods & AV_CODEC_HW_CONFIG_METHOD_HW_DEVICE_CTX && config->device_type == type) {
                     // AV_PIX_FMT_MEDIACODEC(165)
                     hw_pix_fmt = config->pix_fmt;
-                    LOGE("Decoder: %s support device type: %s, hw_pix_fmt: %d, AV_PIX_FMT_MEDIACODEC: %d", h264Mediacodec->name,
+                    LOGE("Decoder: %s support device type: %s, hw_pix_fmt: %d, AV_PIX_FMT_MEDIACODEC: %d", mediacodec->name,
                          av_hwdevice_get_type_name(type), hw_pix_fmt, AV_PIX_FMT_MEDIACODEC);
                     break;
                 }
@@ -67,14 +81,14 @@ bool VideoDecoder::prepare() {
                 LOGE("not use surface decoding")
                 mVideoCodec = avcodec_find_decoder(params->codec_id);
             } else {
-                mVideoCodec = h264Mediacodec;
+                mVideoCodec = mediacodec;
                 int ret = av_hwdevice_ctx_create(&mHwDeviceCtx, type, nullptr, nullptr, 0);
                 if (ret != 0) {
                     LOGE("av_hwdevice_ctx_create err: %d", ret)
                 }
             }
         } else {
-            LOGE("not find h264_mediacodec")
+            LOGE("not find %s", mediacodecName.c_str())
             mVideoCodec = avcodec_find_decoder(params->codec_id);
             mUseHwDecode = false;
         }

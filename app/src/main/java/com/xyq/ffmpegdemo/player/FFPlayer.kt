@@ -50,7 +50,7 @@ class FFPlayer(private val mContext: Context,
     private var mAudioTrack: AudioTrack? = null
     private var mVisualizer: Visualizer? = null
 
-    private val mUseHWDecoder = false
+    private val mUseHWDecoder = true
     private val mRenderManager = RenderManager(mContext)
     private var mWaterMarkBitmap: Bitmap? = null
 
