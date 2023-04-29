@@ -18,9 +18,7 @@ static enum AVPixelFormat get_hw_format(AVCodecContext *ctx,
     return AV_PIX_FMT_NONE;
 }
 
-VideoDecoder::VideoDecoder(int index, AVFormatContext *ftx, int useHw): BaseDecoder(index, ftx) {
-    mUseHwDecode = useHw;
-}
+VideoDecoder::VideoDecoder(int index, AVFormatContext *ftx): BaseDecoder(index, ftx) {}
 
 VideoDecoder::~VideoDecoder() {
     release();
@@ -36,6 +34,7 @@ bool VideoDecoder::prepare() {
     mHeight = params->height;
 
     // find decoder
+    bool useHwDecoder = mSurface != nullptr;
     std::string mediacodecName;
     switch (params->codec_id) {
         case AV_CODEC_ID_H264:
@@ -45,12 +44,12 @@ bool VideoDecoder::prepare() {
             mediacodecName = "hevc_mediacodec";
             break;
         default:
-            mUseHwDecode = false;
+            useHwDecoder = false;
             LOGE("format(%d) not support hw decode, maybe rebuild ffmpeg so", params->codec_id)
             break;
     }
 
-    if (mUseHwDecode) {
+    if (useHwDecoder) {
         AVHWDeviceType type = av_hwdevice_find_type_by_name("mediacodec");
         if (type == AV_HWDEVICE_TYPE_NONE) {
             while ((type = av_hwdevice_iterate_types(type)) != AV_HWDEVICE_TYPE_NONE) {

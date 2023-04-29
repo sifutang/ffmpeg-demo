@@ -61,7 +61,7 @@ bool FFMpegPlayer::prepare(JNIEnv *env, std::string &path, jobject surface) {
     // step4: prepare video decoder
     if (videoIndex >= 0) {
         LOGI("select video stream, index: %d", videoIndex)
-        mVideoDecoder = std::make_shared<VideoDecoder>(videoIndex, mFtx, surface != nullptr);
+        mVideoDecoder = std::make_shared<VideoDecoder>(videoIndex, mFtx);
         mVideoPacketQueue = std::make_shared<AVPacketQueue>(50);
         mVideoThread = new std::thread(&FFMpegPlayer::VideoDecodeLoop, this);
         mVideoDecoder->setErrorMsgListener([](int err, std::string &msg) {
@@ -70,6 +70,12 @@ bool FFMpegPlayer::prepare(JNIEnv *env, std::string &path, jobject surface) {
 
         mVideoDecoder->setSurface(surface);
         videoPrepared = mVideoDecoder->prepare();
+        if (surface != nullptr && !videoPrepared) {
+            mVideoDecoder->release();
+            LOGE("[video] hw decoder prepare failed, fallback to software decoder")
+            mVideoDecoder->setSurface(nullptr);
+            videoPrepared = mVideoDecoder->prepare();
+        }
         if (mPlayerJni.instance != nullptr && mPlayerJni.onVideoPrepared != nullptr) {
             env->CallVoidMethod(mPlayerJni.instance, mPlayerJni.onVideoPrepared, mVideoDecoder->getWidth(), mVideoDecoder->getHeight());
         }

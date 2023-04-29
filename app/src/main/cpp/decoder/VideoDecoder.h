@@ -19,7 +19,7 @@ extern "C" {
 class VideoDecoder: public BaseDecoder {
 
 public:
-    VideoDecoder(int index, AVFormatContext *ftx, int useHw = false);
+    VideoDecoder(int index, AVFormatContext *ftx);
     ~VideoDecoder();
 
     int getWidth() const;
