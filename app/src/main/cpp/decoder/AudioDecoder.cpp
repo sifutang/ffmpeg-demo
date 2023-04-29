@@ -84,6 +84,7 @@ int AudioDecoder::decode(AVPacket *avPacket) {
         return receiveRes;
     }
 
+    int64_t receivePoint = getCurrentTimeMs() - start;
     auto ptsMs = mAvFrame->pts * av_q2d(mFtx->streams[getStreamIndex()]->time_base) * 1000;
     LOGI("[audio] avcodec_receive_frame...pts: %" PRId64 ", time: %f, need retry: %d", mAvFrame->pts, ptsMs, mNeedResent)
 
@@ -103,8 +104,7 @@ int AudioDecoder::decode(AVPacket *avPacket) {
     mNeedFlushRender = false;
     LOGI("swr_convert, dataSize: %d, nb: %d, out_channels: %d", mDataSize, nb, out_channels)
 
-    int64_t end = getCurrentTimeMs();
-    LOGW("[audio] decode consume: %" PRId64, (end - start))
+    LOGW("[audio] decode consume: %" PRId64, receivePoint)
     return 0;
 }
 

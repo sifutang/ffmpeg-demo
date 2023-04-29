@@ -150,7 +150,6 @@ int VideoDecoder::decode(AVPacket *avPacket) {
     // 主动塞到队列中的flush帧
     bool isEof = avPacket->size == 0 && avPacket->data == nullptr;
     int sendRes = avcodec_send_packet(mCodecContext, avPacket);
-    int64_t sendPoint = getCurrentTimeMs() - start;
 
     bool isKeyFrame = avPacket->flags & AV_PKT_FLAG_KEY;
     LOGI("[video] avcodec_send_packet...pts: %" PRId64 ", dts: %" PRId64 ", isKeyFrame: %d, res: %d, isEof: %d", avPacket->pts, avPacket->dts, isKeyFrame, sendRes, isEof)
@@ -226,8 +225,7 @@ int VideoDecoder::decode(AVPacket *avPacket) {
     av_frame_unref(mFilterAvFrame);
     av_frame_unref(mAvFrame);
 
-    int64_t end = getCurrentTimeMs();
-    LOGW("[video] decode consume: %" PRId64 ", sendPoint: %" PRId64 ", receivePoint: %" PRId64, (end - start), sendPoint, receivePoint)
+    LOGW("[video] decode consume: %" PRId64, receivePoint)
 
     return receiveRes;
 }
