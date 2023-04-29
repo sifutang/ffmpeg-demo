@@ -21,7 +21,7 @@
 #ifndef AVCODEC_CODEC_DESC_H
 #define AVCODEC_CODEC_DESC_H
 
-#include "../libavutil/avutil.h"
+#include "libavutil/avutil.h"
 
 #include "codec_id.h"
 

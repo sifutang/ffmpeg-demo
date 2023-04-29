@@ -21,8 +21,8 @@
 #ifndef AVCODEC_CODEC_ID_H
 #define AVCODEC_CODEC_ID_H
 
-#include "../libavutil/avutil.h"
-#include "../libavutil/samplefmt.h"
+#include "libavutil/avutil.h"
+#include "libavutil/samplefmt.h"
 
 /**
  * @addtogroup lavc_core

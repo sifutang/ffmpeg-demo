@@ -28,11 +28,11 @@
 
 #include <stdint.h>
 
-#include "../libavutil/common.h"
-#include "../libavutil/dict.h"
-#include "../libavutil/log.h"
+#include "libavutil/common.h"
+#include "libavutil/dict.h"
+#include "libavutil/log.h"
 
-#include "version.h"
+#include "libavformat/version.h"
 
 /**
  * Seeking works like for a local file.
@@ -128,7 +128,7 @@ enum AVIODataMarkerType {
     AVIO_DATA_MARKER_BOUNDARY_POINT,
     /**
      * This is any, unlabelled data. It can either be a muxer not marking
-     * any positions at all, it can be an actual boundary/avSync point
+     * any positions at all, it can be an actual boundary/sync point
      * that the muxer chooses not to mark, or a later part of a packet/fragment
      * that is cut into multiple write callbacks due to limited IO buffer size.
      */
