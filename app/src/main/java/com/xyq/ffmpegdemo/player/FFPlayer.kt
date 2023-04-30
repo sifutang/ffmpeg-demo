@@ -165,6 +165,7 @@ class FFPlayer(private val mContext: Context,
             return false
         }
 
+        mIsPlayComplete = false
         return nativeSeek(mNativePtr, position)
     }
 
@@ -196,6 +197,8 @@ class FFPlayer(private val mContext: Context,
         } else {
             Log.e(TAG, "resume: failed, state: $mState")
         }
+
+        enableAudioVisualizer(true)
     }
 
     fun pause() {
@@ -205,6 +208,8 @@ class FFPlayer(private val mContext: Context,
         } else {
             Log.e(TAG, "pause: failed, state: $mState")
         }
+
+        enableAudioVisualizer(false)
     }
 
     fun stop() {
@@ -278,7 +283,10 @@ class FFPlayer(private val mContext: Context,
                 }
             }
         }, maxRate / 2, false, true)
-        mVisualizer!!.enabled = true
+    }
+
+    private fun enableAudioVisualizer(enable: Boolean) {
+        mVisualizer?.enabled = true
     }
 
     private fun onNative_videoTrackPrepared(width: Int, height: Int) {
@@ -307,6 +315,7 @@ class FFPlayer(private val mContext: Context,
 
         // audio visualizer
         initAudioVisualizer()
+        enableAudioVisualizer(true)
     }
 
     /**
@@ -329,6 +338,7 @@ class FFPlayer(private val mContext: Context,
     private fun onNative_playComplete() {
         mState = State.PAUSE
         mIsPlayComplete = true
+        enableAudioVisualizer(false)
         mFFPlayerListener?.onComplete()
     }
 
