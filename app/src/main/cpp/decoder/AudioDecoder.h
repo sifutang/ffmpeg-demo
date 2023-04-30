@@ -41,8 +41,6 @@ public:
 private:
     int64_t mStartTimeMsForSync = -1;
 
-    bool mFixStartTime = false;
-
     const AVCodec *mAudioCodec = nullptr;
 
     SwrContext *mSwrContext = nullptr;

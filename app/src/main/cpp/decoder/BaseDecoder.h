@@ -32,11 +32,11 @@ public:
 
     virtual void release();
 
-    bool isNeedResent();
+    bool isNeedResent() const;
 
     int getStreamIndex() const;
 
-    AVRational getTimebase() const;
+    void needFixStartTime();
 
     void setErrorMsgListener(std::function<void(int, std::string &)> listener);
 
@@ -60,6 +60,8 @@ protected:
     bool mNeedResent = false;
 
     int64_t mRetryReceiveCount = 7;
+
+    bool mFixStartTime = false;
 
 private:
     int mStreamIndex = -1;

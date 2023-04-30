@@ -43,10 +43,6 @@ int BaseDecoder::getStreamIndex() const {
 void BaseDecoder::avSync(AVFrame *frame) {
 }
 
-AVRational BaseDecoder::getTimebase() const {
-    return mTimeBase;
-}
-
 int BaseDecoder::seek(double pos) {
     return -1;
 }
@@ -57,6 +53,10 @@ void BaseDecoder::flush() {
     }
 }
 
-bool BaseDecoder::isNeedResent() {
+bool BaseDecoder::isNeedResent() const {
     return mNeedResent;
+}
+
+void BaseDecoder::needFixStartTime() {
+    mFixStartTime = true;
 }

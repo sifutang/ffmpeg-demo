@@ -117,6 +117,12 @@ void FFMpegPlayer::start() {
 
 void FFMpegPlayer::resume() {
     updatePlayerState(PlayerState::PLAYING);
+    if(mVideoDecoder) {
+        mVideoDecoder->needFixStartTime();
+    }
+    if (mAudioDecoder) {
+        mAudioDecoder->needFixStartTime();
+    }
     mMutexObj->wakeUp();
 }
 

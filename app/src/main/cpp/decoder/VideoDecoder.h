@@ -55,10 +55,6 @@ private:
     int64_t mSeekStartTimeMs = -1;
     int64_t mSeekEndTimeMs = -1;
 
-    bool mFixStartTime = false;
-
-    bool mUseHwDecode = false;
-
     jobject mSurface = nullptr;
 
     AVBufferRef *mHwDeviceCtx = nullptr;

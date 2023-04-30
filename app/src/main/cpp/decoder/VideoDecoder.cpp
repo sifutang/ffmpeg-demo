@@ -89,7 +89,6 @@ bool VideoDecoder::prepare() {
         } else {
             LOGE("not find %s", mediacodecName.c_str())
             mVideoCodec = avcodec_find_decoder(params->codec_id);
-            mUseHwDecode = false;
         }
     } else {
         mVideoCodec = avcodec_find_decoder(params->codec_id);
