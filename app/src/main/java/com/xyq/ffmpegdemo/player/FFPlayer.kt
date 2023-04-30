@@ -62,6 +62,8 @@ class FFPlayer(private val mContext: Context,
 
     private var mPath = ""
 
+    private var mIsPlayComplete = false
+
     interface FFPlayerListener {
         fun onProgress(timestamp: Double)
 
@@ -132,6 +134,7 @@ class FFPlayer(private val mContext: Context,
         nativePrepare(mNativePtr, path, mSurface)
         mState = State.PREPARE
         mPath = path
+        mIsPlayComplete = false
 
         mDuration = getDuration()
     }
@@ -148,6 +151,10 @@ class FFPlayer(private val mContext: Context,
             mDuration = nativeGetDuration(mNativePtr)
         }
         return mDuration
+    }
+
+    fun isPlayComplete(): Boolean {
+        return mIsPlayComplete
     }
 
     /**
@@ -208,6 +215,7 @@ class FFPlayer(private val mContext: Context,
         Log.i(TAG, "stop: ")
         mState = State.STOP
         mDuration = -1.0
+        mIsPlayComplete = false
 
         val visualizer = mVisualizer
         mVisualizer = null
@@ -320,6 +328,7 @@ class FFPlayer(private val mContext: Context,
 
     private fun onNative_playComplete() {
         mState = State.PAUSE
+        mIsPlayComplete = true
         mFFPlayerListener?.onComplete()
     }
 

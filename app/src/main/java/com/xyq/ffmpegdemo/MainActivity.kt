@@ -186,6 +186,9 @@ class MainActivity : AppCompatActivity() {
                     mPlayer.pause()
                 } else {
                     mBtnViewModel.mPlayLiveData.value = ButtonItemModel(R.drawable.play_resume, false)
+                    if (mPlayer.isPlayComplete()) {
+                        mPlayer.seek(0.0)
+                    }
                     mPlayer.resume()
                 }
             }
