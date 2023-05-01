@@ -2,6 +2,7 @@ package com.xyq.ffmpegdemo
 
 import android.Manifest
 import android.app.ActionBar.LayoutParams
+import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.*
@@ -28,11 +29,6 @@ class MainActivity : AppCompatActivity() {
     companion object {
         private const val TAG = "MainActivity"
         private const val VIDEO_THUMBNAIL_SIZE = 5
-        private val VIDEO_SOURCE_PATH_ARR = arrayOf(
-            "oceans.mp4",
-            "av_sync_test.mp4",
-            "hdr10.mp4"
-        )
         init {
             System.loadLibrary("ffmpegdemo")
         }
@@ -48,7 +44,6 @@ class MainActivity : AppCompatActivity() {
     private var mHasPermission = false
     private var mIsSeeking = false
     private var mDuration = -1.0
-    private var mCurVideoIndex = -1
 
     private var mExecutors = Executors.newFixedThreadPool(2)
 
@@ -73,7 +68,7 @@ class MainActivity : AppCompatActivity() {
         mPlayer = FFPlayer(applicationContext, mBinding.glSurfaceView, mBinding.audioVisualizeView)
 
         // preload video thumbnail
-        mVideoPath = getNextVideoPath()
+        mVideoPath = getDemoVideoPath()
         fetchVideoThumbnail(mVideoPath)
         TraceUtils.endSection()
     }
@@ -207,17 +202,14 @@ class MainActivity : AppCompatActivity() {
         }
 
         mBinding.btnSelectFile.setOnClickListener {
-//            val intent = Intent(Intent.ACTION_GET_CONTENT)
-//            intent.type = "video/*"
-//            intent.addCategory(Intent.CATEGORY_OPENABLE)
-//            try {
-//                startActivityForResult(Intent.createChooser(intent, "选择播放文件"), 2000)
-//            } catch (e: ActivityNotFoundException) {
-//                e.printStackTrace()
-//            }
-            stopPlay()
-            mVideoPath = getNextVideoPath()
-            startPlay(mVideoPath)
+            val intent = Intent(Intent.ACTION_GET_CONTENT)
+            intent.type = "video/*"
+            intent.addCategory(Intent.CATEGORY_OPENABLE)
+            try {
+                startActivityForResult(Intent.createChooser(intent, "选择播放文件"), 2000)
+            } catch (e: ActivityNotFoundException) {
+                e.printStackTrace()
+            }
         }
 
         mBinding.btnGridFilter.tag = false
@@ -285,6 +277,7 @@ class MainActivity : AppCompatActivity() {
                 }
 
             })
+
             mPlayer.start()
         }
     }
@@ -316,10 +309,9 @@ class MainActivity : AppCompatActivity() {
         Log.i(TAG, "stopPlay: done")
     }
 
-    private fun getNextVideoPath(): String {
-        mCurVideoIndex++
-        mCurVideoIndex %= VIDEO_SOURCE_PATH_ARR.size
-        val path = VIDEO_SOURCE_PATH_ARR[mCurVideoIndex]
+    private fun getDemoVideoPath(): String {
+        val path = "oceans.mp4"
+//        val path = "av_sync_test.mp4"
         val videoPath = cacheDir.absolutePath + "/$path"
         FileUtils.copyFile2Path(assets.open(path), videoPath)
         return videoPath
