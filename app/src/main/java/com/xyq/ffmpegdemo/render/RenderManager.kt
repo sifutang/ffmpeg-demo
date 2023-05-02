@@ -30,7 +30,9 @@ class RenderManager(private val mContext: Context) {
     private var mVideoWidth = -1
     private var mVideoHeight = -1
 
-    private var mDisplayRotate = 0
+    private var mVideoRotate = 0
+
+    private var mGreyIdentity = 0.5f
 
     private var mVideoDrawer: IDrawer? = null
     private var mDisplayDrawer: IDrawer? = null
@@ -124,61 +126,59 @@ class RenderManager(private val mContext: Context) {
 
     fun pushVideoData(format: RenderFormat, data: RenderData) {
         mVideoDrawer = take(format, mContext)
-        mVideoDrawer?.setVideoSize(mVideoWidth, mVideoHeight)
-        mVideoDrawer?.setWorldSize(mSurfaceWidth, mSurfaceHeight)
         mVideoDrawer?.pushData(data)
     }
 
-    fun setDisplayRotate(rotate: Int) {
-        mDisplayRotate = rotate
+    fun setVideoRotate(rotate: Int) {
+        mVideoRotate = rotate
     }
 
     fun setVideoSize(width: Int, height: Int) {
         mVideoWidth = width
         mVideoHeight = height
-        mVideoDrawer?.setVideoSize(width, height)
     }
 
     fun setSurfaceSize(width: Int, height: Int) {
         mSurfaceWidth = width
         mSurfaceHeight = height
-        mVideoDrawer?.setWorldSize(width, height)
     }
 
     fun setGreyFilterProgress(value: Float) {
-        mGreyFilter?.setProgress(value)
+        mGreyIdentity = value
     }
 
     fun draw() {
-        // TODO: add render chain
-        mVideoDrawer?.let {
-            // draw video
-            val videoOutputId = it.drawToFbo()
-            if (videoOutputId < 0) {
-                Log.e(TAG, "onDrawFrame: err")
-                return
-            }
+        if (mVideoDrawer == null) return
 
-            // draw filter
-            if (mGreyFilter == null) {
-                mGreyFilter = GreyFilter(mContext)
-                mGreyFilter!!.init(false)
-            }
-            mGreyFilter!!.setProgress(0.5f) // for demo
-            mGreyFilter!!.setVideoSize(mVideoWidth, mVideoHeight)
-            mGreyFilter!!.setWorldSize(mSurfaceWidth, mSurfaceHeight)
-            val greyOutputId = mGreyFilter!!.drawToFbo(videoOutputId)
-
-            mDisplayDrawer!!.setRotate(mDisplayRotate)
-            mDisplayDrawer!!.setVideoSize(mVideoWidth, mVideoHeight)
-            mDisplayDrawer!!.setWorldSize(mSurfaceWidth, mSurfaceHeight)
-
-            // draw water mark
-//            val waterMarkOutputId = mDisplayDrawer!!.drawToFbo(mWaterMarkTextureId)
-
-            // draw to screen
-            mDisplayDrawer?.draw(greyOutputId)
+        val rotate = mVideoRotate
+        var videoWidth = mVideoWidth
+        var videoHeight = mVideoHeight
+        if (rotate == 90 || rotate == 270) {
+            videoWidth = mVideoHeight
+            videoHeight = mVideoWidth
         }
+        mVideoDrawer!!.setRotate(rotate) // 视频旋转处理
+        mVideoDrawer!!.setVideoSize(videoWidth, videoHeight)
+        mVideoDrawer!!.setWorldSize(mSurfaceWidth, mSurfaceHeight)
+
+        // draw video
+        val videoOutputId = mVideoDrawer!!.drawToFbo()
+
+        // draw filter
+        if (mGreyFilter == null) {
+            mGreyFilter = GreyFilter(mContext)
+            mGreyFilter!!.init(false)
+        }
+        mGreyFilter!!.setVideoSize(videoWidth, videoHeight)
+        mGreyFilter!!.setWorldSize(mSurfaceWidth, mSurfaceHeight)
+        mGreyFilter!!.setProgress(mGreyIdentity)
+        val greyOutputId = mGreyFilter!!.drawToFbo(videoOutputId)
+
+        // draw to screen
+        mDisplayDrawer?.setRotate(0)
+        mDisplayDrawer?.setVideoSize(videoWidth, videoHeight)
+        mDisplayDrawer?.setWorldSize(mSurfaceWidth, mSurfaceHeight)
+        mDisplayDrawer?.draw(greyOutputId)
     }
 
 }

@@ -1,6 +1,7 @@
 package com.xyq.ffmpegdemo.render.model
 
 import android.opengl.GLES20
+import android.opengl.Matrix
 import com.xyq.ffmpegdemo.render.utils.OpenGLTools
 
 /**
@@ -13,10 +14,15 @@ class FboDesc(
 
     private var mFboId: Int = -1
     private var mFboTextureId: Int = -1
+    private var mRotate = 0
+    private var mFBOMatrix: FloatArray = FloatArray(16)
 
     init {
         mFboId = OpenGLTools.createFBO()
         mFboTextureId = OpenGLTools.createFBOTexture(mFboId, mWidth, mHeight)
+
+        Matrix.setIdentityM(mFBOMatrix, 0)
+        Matrix.scaleM(mFBOMatrix, 0, 1f, -1f, 1f)
     }
 
     fun updateSize(width: Int, height: Int) {
@@ -27,6 +33,17 @@ class FboDesc(
             GLES20.glTexImage2D(GLES20.GL_TEXTURE_2D, 0, GLES20.GL_RGBA, width, height,
                 0, GLES20.GL_RGBA, GLES20.GL_UNSIGNED_BYTE, null)
             GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, GLES20.GL_NONE)
+        }
+    }
+
+    fun updateRotate(rotate: Int) {
+        if (rotate != mRotate) {
+            mRotate = rotate
+            Matrix.setIdentityM(mFBOMatrix, 0)
+            if (rotate != 0) {
+                Matrix.rotateM(mFBOMatrix, 0, rotate.toFloat(), 0f, 0f, 1f)
+            }
+            Matrix.scaleM(mFBOMatrix, 0, 1f, -1f, 1f)
         }
     }
 
@@ -46,7 +63,17 @@ class FboDesc(
         return mFboTextureId
     }
 
+    fun getMatrix(): FloatArray {
+        return mFBOMatrix
+    }
+
     fun release() {
         OpenGLTools.deleteFBO(mFboId, mFboTextureId)
     }
+
+    override fun toString(): String {
+        return "FboDesc(mWidth=$mWidth, mHeight=$mHeight, mFboId=$mFboId, mFboTextureId=$mFboTextureId, mRotate=$mRotate)"
+    }
+
+
 }

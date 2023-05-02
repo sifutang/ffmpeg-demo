@@ -140,7 +140,7 @@ class FFPlayer(private val mContext: Context,
 
         mDuration = getDuration()
         mVideoRotate = nativeGetRotate(mNativePtr)
-        mRenderManager.setDisplayRotate(mVideoRotate)
+        mRenderManager.setVideoRotate(mVideoRotate)
         Log.i(TAG, "prepare: done, duration: $mDuration, rotate: $mVideoRotate")
     }
 

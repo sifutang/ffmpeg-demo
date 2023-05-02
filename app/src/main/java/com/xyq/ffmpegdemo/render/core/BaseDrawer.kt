@@ -57,7 +57,6 @@ abstract class BaseDrawer(private val mContext: Context) : IDrawer {
     private var mHeightRatio = 1f
 
     private var mMatrix: FloatArray? = null
-    private var mFBOMatrix: FloatArray = FloatArray(16)
 
     // fbo
     private var mFboDesc: FboDesc? = null
@@ -84,9 +83,6 @@ abstract class BaseDrawer(private val mContext: Context) : IDrawer {
         mTextureBuffer = byteBuffer.asFloatBuffer()
         mTextureBuffer.put(mTextureCoors)
         mTextureBuffer.position(0)
-
-        Matrix.setIdentityM(mFBOMatrix, 0)
-        Matrix.scaleM(mFBOMatrix, 0, 1f, -1f, 1f)
     }
 
     override fun setVideoSize(w: Int, h: Int) {
@@ -201,19 +197,20 @@ abstract class BaseDrawer(private val mContext: Context) : IDrawer {
 
     private fun drawToFbo(inputs: IntArray?, useBufferInput: Boolean): Int {
         if (mFboDesc == null && mVideoWidth > 0 && mVideoHeight > 0) {
-            Log.i(TAG, "drawToFbo: create fbo")
             mFboDesc = FboDesc(mVideoWidth, mVideoHeight)
+            Log.i(TAG, "drawToFbo: create fbo: $mFboDesc")
         }
 
         if (mFboDesc == null || !mFboDesc!!.isValid()) {
-            Log.i(TAG, "drawToFbo: fbo not ready")
+            Log.i(TAG, "drawToFbo: fbo not ready: $mFboDesc")
             return -1
         }
 
         mFboDesc!!.bind()
+        mFboDesc!!.updateRotate(mRotate)
         mFboDesc!!.updateSize(mVideoWidth, mVideoHeight)
         GLES20.glViewport(0, 0, mVideoWidth ,mVideoHeight)
-        drawCore(inputs, useBufferInput, mFBOMatrix)
+        drawCore(inputs, useBufferInput, mFboDesc!!.getMatrix())
         mFboDesc!!.unBind()
 
         return mFboDesc!!.getTextureId()
@@ -239,8 +236,14 @@ abstract class BaseDrawer(private val mContext: Context) : IDrawer {
     }
 
     private fun initDefMatrix() {
-        if (mMatrix != null && !mNeedResetMatrix) return
+        if (mMatrix != null && !mNeedResetMatrix) {
+            return
+        }
+        mNeedResetMatrix = false
+        // update normal matrix
         if (mVideoWidth != -1 && mVideoHeight != -1 && mWorldWidth != -1 && mWorldHeight != -1) {
+            Log.i(TAG, "initDefMatrix: rotate: $mRotate")
+
             var worldWidth = mWorldWidth
             var worldHeight = mWorldHeight
             if (mRotate == 90 || mRotate == 270) {
