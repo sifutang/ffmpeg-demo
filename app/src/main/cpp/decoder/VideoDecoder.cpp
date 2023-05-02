@@ -170,6 +170,10 @@ int VideoDecoder::decode(AVPacket *avPacket) {
     if (receiveRes != 0) {
         LOGE("[video] avcodec_receive_frame err: %d, resent: %d", receiveRes, mNeedResent)
         av_frame_unref(mAvFrame);
+        // force EOF
+        if (isEof && mRetryReceiveCount < 0) {
+            receiveRes = AVERROR_EOF;
+        }
         return receiveRes;
     }
 
