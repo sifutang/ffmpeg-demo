@@ -43,13 +43,15 @@ abstract class BaseDrawer(private val mContext: Context) : IDrawer {
     private var mInit = false
     private var mInitRunnable: Runnable? = null
 
+    private var mRotate = 0
+
     private var mWorldWidth = -1
     private var mWorldHeight = -1
 
     private var mVideoWidth = -1
     private var mVideoHeight = -1
 
-    private var mSizeChanged = false
+    private var mNeedResetMatrix = false
 
     private var mWidthRatio = 1f
     private var mHeightRatio = 1f
@@ -91,7 +93,7 @@ abstract class BaseDrawer(private val mContext: Context) : IDrawer {
         if (mVideoWidth != w || mVideoHeight != h) {
             mVideoWidth = w
             mVideoHeight = h
-            mSizeChanged = true
+            mNeedResetMatrix = true
             Log.i(TAG, "setVideoSize: $w x $h")
         }
     }
@@ -104,8 +106,16 @@ abstract class BaseDrawer(private val mContext: Context) : IDrawer {
         if (mWorldWidth != w || mWorldHeight != h) {
             mWorldWidth = w
             mWorldHeight = h
-            mSizeChanged = true
+            mNeedResetMatrix = true
             Log.i(TAG, "setWorldSize: $w x $h")
+        }
+    }
+
+    override fun setRotate(rotate: Int) {
+        if (mRotate != rotate) {
+            mRotate = rotate
+            mNeedResetMatrix = true
+            Log.i(TAG, "setRotate: $mRotate")
         }
     }
 
@@ -229,12 +239,19 @@ abstract class BaseDrawer(private val mContext: Context) : IDrawer {
     }
 
     private fun initDefMatrix() {
-        if (mMatrix != null && !mSizeChanged) return
+        if (mMatrix != null && !mNeedResetMatrix) return
         if (mVideoWidth != -1 && mVideoHeight != -1 && mWorldWidth != -1 && mWorldHeight != -1) {
+            var worldWidth = mWorldWidth
+            var worldHeight = mWorldHeight
+            if (mRotate == 90 || mRotate == 270) {
+                worldWidth = mWorldHeight
+                worldHeight = mWorldWidth
+            }
+
             mMatrix = FloatArray(16)
             val projMatrix = FloatArray(16)
             val originRatio = mVideoWidth / mVideoHeight.toFloat()
-            val worldRatio = mWorldWidth / mWorldHeight.toFloat()
+            val worldRatio = worldWidth / worldHeight.toFloat()
             if (originRatio > worldRatio) {
                 val actualRatio = originRatio / worldRatio
                 Matrix.orthoM(projMatrix, 0, -1f, 1f, -actualRatio, actualRatio, 3f, 5f)
@@ -251,6 +268,10 @@ abstract class BaseDrawer(private val mContext: Context) : IDrawer {
                 0f, 1.0f, 0f
             )
             Matrix.multiplyMM(mMatrix, 0, projMatrix, 0, viewMatrix, 0)
+
+            if (mRotate != 0) {
+                Matrix.rotateM(mMatrix, 0, mRotate.toFloat(), 0f, 0f, 1f)
+            }
         }
     }
 

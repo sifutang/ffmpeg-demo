@@ -546,3 +546,10 @@ void FFMpegPlayer::setFilter(int filterVal, bool enable) {
         mVideoDecoder->enableGridFilter(enable);
     }
 }
+
+int FFMpegPlayer::getRotate() {
+    if (mVideoDecoder) {
+        return mVideoDecoder->getRotate();
+    }
+    return 0;
+}

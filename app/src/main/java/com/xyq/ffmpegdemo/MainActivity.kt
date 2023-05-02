@@ -226,7 +226,7 @@ class MainActivity : AppCompatActivity() {
         mVideoThumbnailViewModel.mLiveData.observe(this) {
             Log.i(TAG, "Receive VideoThumbnailViewModel: $it")
             if (it.isValid() && it.index < mThumbnailViews.size) {
-                mThumbnailViews[it.index].setImageBitmap(it.bitmap)
+                mThumbnailViews[it.index].setImageBitmap(it.getBitmap())
             }
         }
 

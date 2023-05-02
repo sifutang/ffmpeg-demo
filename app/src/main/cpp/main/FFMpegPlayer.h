@@ -82,6 +82,8 @@ public:
 
     double getDuration();
 
+    int getRotate();
+
 private:
     JavaVM *mJvm = nullptr;
     PlayerJniContext mPlayerJni{};

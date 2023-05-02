@@ -30,6 +30,8 @@ class RenderManager(private val mContext: Context) {
     private var mVideoWidth = -1
     private var mVideoHeight = -1
 
+    private var mDisplayRotate = 0
+
     private var mVideoDrawer: IDrawer? = null
     private var mDisplayDrawer: IDrawer? = null
     private var mGreyFilter: GreyFilter? = null
@@ -127,6 +129,10 @@ class RenderManager(private val mContext: Context) {
         mVideoDrawer?.pushData(data)
     }
 
+    fun setDisplayRotate(rotate: Int) {
+        mDisplayRotate = rotate
+    }
+
     fun setVideoSize(width: Int, height: Int) {
         mVideoWidth = width
         mVideoHeight = height
@@ -163,6 +169,7 @@ class RenderManager(private val mContext: Context) {
             mGreyFilter!!.setWorldSize(mSurfaceWidth, mSurfaceHeight)
             val greyOutputId = mGreyFilter!!.drawToFbo(videoOutputId)
 
+            mDisplayDrawer!!.setRotate(mDisplayRotate)
             mDisplayDrawer!!.setVideoSize(mVideoWidth, mVideoHeight)
             mDisplayDrawer!!.setWorldSize(mSurfaceWidth, mSurfaceHeight)
 

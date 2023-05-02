@@ -3,6 +3,10 @@
 #include "../utils/CommonUtils.h"
 #include "../vendor/libyuv/libyuv.h"
 
+extern "C" {
+#include "libavutil/display.h"
+}
+
 FFVideoReader::FFVideoReader() = default;
 
 FFVideoReader::~FFVideoReader() {
@@ -164,4 +168,31 @@ void FFVideoReader::getFrame(int64_t pts, int width, int height, uint8_t *buffer
     av_frame_free(&frame);
     av_free(frame);
 
+}
+
+int FFVideoReader::getRotate() {
+    AVStream *stream = mFtx->streams[mMediaInfo.videoIndex];
+    AVDictionaryEntry *tag = nullptr;
+
+    while ((tag = av_dict_get(stream->metadata, "", tag, AV_DICT_IGNORE_SUFFIX))) {
+        LOGW("[video] metadata: %s, %s", tag->key, tag->value)
+    }
+
+    tag = av_dict_get(mFtx->metadata, "rotate", nullptr, 0);
+    LOGE("getRotate: %s", tag == nullptr ? "-1" : tag->value)
+    int rotate;
+    if (tag != nullptr) {
+        rotate = atoi(tag->value);
+    } else {
+        uint8_t* displayMatrix = av_stream_get_side_data(stream,AV_PKT_DATA_DISPLAYMATRIX, nullptr);
+        double theta = 0;
+        if (displayMatrix) {
+            theta = -av_display_rotation_get((int32_t*) displayMatrix);
+        }
+        rotate = (int)theta;
+    }
+
+    LOGE("getRotate: %d", rotate)
+
+    return rotate < 0 ? 0 : rotate;
 }

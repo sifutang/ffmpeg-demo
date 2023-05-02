@@ -11,6 +11,8 @@ public:
 
     bool init(std::string &path) override;
 
+    int getRotate();
+
     void getFrame(int64_t pts, int width, int height, uint8_t *buffer);
 
 private:

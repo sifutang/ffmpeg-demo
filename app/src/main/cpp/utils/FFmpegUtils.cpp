@@ -25,7 +25,7 @@ Java_com_xyq_ffmpegdemo_utils_FFMpegUtils_getVideoFramesCore(JNIEnv *env, jobjec
     assert(jclazz != nullptr);
 
     jmethodID onFetchStart = env->GetMethodID(jclazz, "onFetchStart", "(D)[D");
-    jmethodID onProgress = env->GetMethodID(jclazz, "onProgress", "(Ljava/nio/ByteBuffer;DIII)Z");
+    jmethodID onProgress = env->GetMethodID(jclazz, "onProgress", "(Ljava/nio/ByteBuffer;DIIII)Z");
     jmethodID onFetchEnd = env->GetMethodID(jclazz, "onFetchEnd", "()V");
 
     auto *reader = new FFVideoReader();
@@ -58,6 +58,8 @@ Java_com_xyq_ffmpegdemo_utils_FFMpegUtils_getVideoFramesCore(JNIEnv *env, jobjec
     int size = env->GetArrayLength(timestamps);
     LOGI("timestamps size: %d", size)
 
+    int rotate = reader->getRotate();
+
     for (int i = 0; i < size; i++) {
         jobject jByteBuffer = env->CallObjectMethod(thiz, allocateFrame, width, height);
         auto *buffer = (uint8_t *)env->GetDirectBufferAddress(jByteBuffer);
@@ -65,7 +67,7 @@ Java_com_xyq_ffmpegdemo_utils_FFMpegUtils_getVideoFramesCore(JNIEnv *env, jobjec
 
         auto pts = (int64_t)tsArr[i];
         reader->getFrame(pts, width, height, buffer);
-        jboolean abort = !env->CallBooleanMethod(cb, onProgress, jByteBuffer, tsArr[i], width, height, i);
+        jboolean abort = !env->CallBooleanMethod(cb, onProgress, jByteBuffer, tsArr[i], width, height, rotate, i);
         if (abort) {
             LOGE("onProgress abort")
             break;

@@ -15,7 +15,7 @@ object FFMpegUtils {
         /**
          * 每抽帧一次回调一次
          */
-        fun onProgress(frame: ByteBuffer, timestamps: Double, width: Int, height: Int, index: Int): Boolean
+        fun onProgress(frame: ByteBuffer, timestamps: Double, width: Int, height: Int, rotate: Int, index: Int): Boolean
 
         /**
          * 抽帧动作结束

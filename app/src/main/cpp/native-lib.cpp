@@ -120,3 +120,12 @@ Java_com_xyq_ffmpegdemo_player_FFPlayer_nativeSetFilter(JNIEnv *env, jobject thi
         player->setFilter(filter, enable);
     }
 }
+extern "C"
+JNIEXPORT jint JNICALL
+Java_com_xyq_ffmpegdemo_player_FFPlayer_nativeGetRotate(JNIEnv *env, jobject thiz, jlong handle) {
+    auto *player = reinterpret_cast<FFMpegPlayer *>(handle);
+    if (player) {
+        return player->getRotate();
+    }
+    return 0;
+}

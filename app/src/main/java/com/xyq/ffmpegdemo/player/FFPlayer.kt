@@ -60,6 +60,8 @@ class FFPlayer(private val mContext: Context,
 
     private var mDuration = -1.0
 
+    private var mVideoRotate = 0
+
     private var mPath = ""
 
     private var mIsPlayComplete = false
@@ -137,6 +139,9 @@ class FFPlayer(private val mContext: Context,
         mIsPlayComplete = false
 
         mDuration = getDuration()
+        mVideoRotate = nativeGetRotate(mNativePtr)
+        mRenderManager.setDisplayRotate(mVideoRotate)
+        Log.i(TAG, "prepare: done, duration: $mDuration, rotate: $mVideoRotate")
     }
 
     /**
@@ -220,6 +225,7 @@ class FFPlayer(private val mContext: Context,
         Log.i(TAG, "stop: ")
         mState = State.STOP
         mDuration = -1.0
+        mVideoRotate = 0
         mIsPlayComplete = false
 
         val visualizer = mVisualizer
@@ -344,8 +350,6 @@ class FFPlayer(private val mContext: Context,
 
     private external fun nativeInit(): Long
 
-    private external fun nativeGetDuration(handle: Long): Double
-
     private external fun nativeSeek(handle: Long, position: Double): Boolean
 
     private external fun nativeSetMute(handle: Long, mute: Boolean)
@@ -363,4 +367,8 @@ class FFPlayer(private val mContext: Context,
     private external fun nativeStop(handle: Long)
 
     private external fun nativeRelease(handle: Long)
+
+    private external fun nativeGetDuration(handle: Long): Double
+
+    private external fun nativeGetRotate(handle: Long): Int
 }

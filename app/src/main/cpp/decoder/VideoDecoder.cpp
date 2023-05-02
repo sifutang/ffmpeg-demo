@@ -29,7 +29,9 @@ void VideoDecoder::setSurface(jobject surface) {
 }
 
 bool VideoDecoder::prepare() {
-    AVCodecParameters *params = mFtx->streams[getStreamIndex()]->codecpar;
+    AVStream *stream = mFtx->streams[getStreamIndex()];
+
+    AVCodecParameters *params = stream->codecpar;
     mWidth = params->width;
     mHeight = params->height;
 
@@ -454,5 +456,32 @@ void VideoDecoder::initFilters() {
 
 void VideoDecoder::enableGridFilter(bool enable) {
     mEnableFilter = enable;
+}
+
+int VideoDecoder::getRotate() {
+    AVStream *stream = mFtx->streams[getStreamIndex()];
+    AVDictionaryEntry *tag = nullptr;
+
+    while ((tag = av_dict_get(stream->metadata, "", tag, AV_DICT_IGNORE_SUFFIX))) {
+        LOGW("[video] metadata: %s, %s", tag->key, tag->value)
+    }
+
+    tag = av_dict_get(mFtx->metadata, "rotate", nullptr, 0);
+    LOGE("getRotate: %s", tag == nullptr ? "-1" : tag->value)
+    int rotate;
+    if (tag != nullptr) {
+        rotate = atoi(tag->value);
+    } else {
+        uint8_t* displayMatrix = av_stream_get_side_data(stream,AV_PKT_DATA_DISPLAYMATRIX, nullptr);
+        double theta = 0;
+        if (displayMatrix) {
+            theta = -av_display_rotation_get((int32_t*) displayMatrix);
+        }
+        rotate = (int)theta;
+    }
+
+    LOGE("getRotate: %d", rotate)
+
+    return rotate < 0 ? 0 : rotate;
 }
 

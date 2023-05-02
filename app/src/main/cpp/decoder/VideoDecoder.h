@@ -14,6 +14,7 @@ extern "C" {
 #include "../vendor/ffmpeg/libavfilter/buffersrc.h"
 #include "../vendor/ffmpeg/libavfilter/buffersink.h"
 #include "../vendor/ffmpeg/libavutil/opt.h"
+#include "../vendor/ffmpeg/libavutil/display.h"
 }
 
 class VideoDecoder: public BaseDecoder {
@@ -43,6 +44,8 @@ public:
     int64_t getTimestamp() const;
 
     void enableGridFilter(bool enable);
+
+    int getRotate();
 
 private:
     int mWidth = -1;

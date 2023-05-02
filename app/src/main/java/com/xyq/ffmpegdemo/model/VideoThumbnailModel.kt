@@ -1,25 +1,37 @@
 package com.xyq.ffmpegdemo.model
 
 import android.graphics.Bitmap
+import android.graphics.Matrix
 import java.nio.ByteBuffer
 
-class VideoThumbnailModel(val width: Int, val height: Int, val index: Int, val buffer: ByteBuffer?) {
+class VideoThumbnailModel(val width: Int, val height: Int, val rotate: Int, val index: Int, val buffer: ByteBuffer?) {
 
-    var bitmap: Bitmap? = null
-
-    init {
-        buffer?.let {
-            bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
-            bitmap!!.copyPixelsFromBuffer(it)
-        }
-    }
+    private var mBitmap: Bitmap? = null
 
     fun isValid(): Boolean {
-        return index >= 0 && bitmap != null
+        return index >= 0 && getBitmap() != null
+    }
+
+    fun getBitmap(): Bitmap? {
+        if (mBitmap == null) {
+            buffer?.let {
+                val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+                bitmap!!.copyPixelsFromBuffer(it)
+                mBitmap = if (rotate != 0) {
+                    val matrix = Matrix()
+                    matrix.postRotate(rotate.toFloat())
+                    Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+                } else {
+                    bitmap
+                }
+            }
+        }
+
+        return mBitmap
     }
 
     override fun toString(): String {
-        return "VideoThumbnailModel(width=$width, height=$height, index=$index, buffer=$buffer, bitmap=$bitmap)"
+        return "VideoThumbnailModel(width=$width, height=$height, rotate=$rotate, index=$index)"
     }
 
 }

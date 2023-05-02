@@ -39,12 +39,12 @@ class VideoThumbnailViewModel: ViewModel() {
                 return ptsArr
             }
 
-            override fun onProgress(frame: ByteBuffer, timestamps: Double, width: Int, height: Int, index: Int): Boolean {
+            override fun onProgress(frame: ByteBuffer, timestamps: Double, width: Int, height: Int, rotate: Int, index: Int): Boolean {
                 if (path != mVideoPath) {
                     return false
                 }
                 Log.i(TAG, "onProgress: timestamps: $timestamps, width: $width, height: $height, consume: ${System.currentTimeMillis() - start}")
-                onDataReceive(VideoThumbnailModel(width, height, index, frame))
+                onDataReceive(VideoThumbnailModel(width, height, rotate, index, frame))
                 return true
             }
 

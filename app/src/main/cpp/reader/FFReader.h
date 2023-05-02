@@ -70,9 +70,11 @@ public:
 
     void release();
 
-private:
+protected:
     AVFormatContext *mFtx = nullptr;
+    MediaInfo mMediaInfo;
 
+private:
     const AVCodec *mCodecArr[2]{nullptr, nullptr};
     AVCodecContext *mCodecContextArr[2]{nullptr, nullptr};
 
@@ -80,8 +82,6 @@ private:
     int mAudioIndex = -1;
     int mCurStreamIndex = -1;
     TrackType mCurTrackType = Track_Video;
-
-    MediaInfo mMediaInfo;
 
     bool mSkipNonRefFrame = false;
 
