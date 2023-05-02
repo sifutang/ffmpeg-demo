@@ -170,15 +170,14 @@ void FFVideoReader::getFrame(int64_t pts, int width, int height, uint8_t *buffer
 
 }
 
-int FFVideoReader::getRotate() {
-    AVStream *stream = mFtx->streams[mMediaInfo.videoIndex];
-    AVDictionaryEntry *tag = nullptr;
+int FFVideoReader::getRotate(AVStream *stream) {
+    AVDictionaryEntry *tag;
 
-    while ((tag = av_dict_get(stream->metadata, "", tag, AV_DICT_IGNORE_SUFFIX))) {
-        LOGW("[video] metadata: %s, %s", tag->key, tag->value)
-    }
+//    while ((tag = av_dict_get(stream->metadata, "", tag, AV_DICT_IGNORE_SUFFIX))) {
+//        LOGW("[video] metadata: %s, %s", tag->key, tag->value)
+//    }
 
-    tag = av_dict_get(mFtx->metadata, "rotate", nullptr, 0);
+    tag = av_dict_get(stream->metadata, "rotate", nullptr, 0);
     LOGE("getRotate: %s", tag == nullptr ? "-1" : tag->value)
     int rotate;
     if (tag != nullptr) {
@@ -195,4 +194,8 @@ int FFVideoReader::getRotate() {
     LOGE("getRotate: %d", rotate)
 
     return rotate < 0 ? 0 : rotate;
+}
+
+int FFVideoReader::getRotate() {
+    return getRotate(mFtx->streams[mMediaInfo.videoIndex]);
 }
