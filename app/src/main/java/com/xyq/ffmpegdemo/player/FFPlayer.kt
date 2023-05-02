@@ -329,19 +329,24 @@ class FFPlayer(private val mContext: Context,
      * size: audio size
      * timestamp: ms
      */
-    private fun onNative_audioFrameArrived(buffer: ByteArray?, size: Int, timestamp: Double, flush: Boolean) {
+    private fun onNative_audioFrameArrived(buffer: ByteArray?, size: Int, flush: Boolean) {
         buffer?.apply {
             if (flush) {
                 mAudioTrack?.flush()
                 Log.w(TAG, "onNative_audioFrameArrived: flush audio track")
             }
             val code = mAudioTrack?.write(buffer, 0, size, AudioTrack.WRITE_NON_BLOCKING)
-            Log.d(TAG, "onNative_audioFrameArrived, size: $size, timestamp: ${timestamp}ms, code: $code")
-            mFFPlayerListener?.onProgress(timestamp / 1000)
+            Log.d(TAG, "onNative_audioFrameArrived, size: $size, code: $code")
         }
     }
 
+    private fun onNative_playProgress(timestamp: Double) {
+        Log.d(TAG, "onNative_playProgress: ${timestamp}ms")
+        mFFPlayerListener?.onProgress(timestamp / 1000)
+    }
+
     private fun onNative_playComplete() {
+        Log.d(TAG, "onNative_playComplete: ")
         mState = State.PAUSE
         mIsPlayComplete = true
         enableAudioVisualizer(false)

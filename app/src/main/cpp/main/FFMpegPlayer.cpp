@@ -23,8 +23,9 @@ void FFMpegPlayer::init(JNIEnv *env, jobject thiz) {
     mPlayerJni.onVideoFrameArrived = env->GetMethodID(jclazz, "onNative_videoFrameArrived", "(III[B[B[B)V");
 
     mPlayerJni.onAudioPrepared = env->GetMethodID(jclazz, "onNative_audioTrackPrepared", "()V");
-    mPlayerJni.onAudioFrameArrived = env->GetMethodID(jclazz, "onNative_audioFrameArrived", "([BIDZ)V");
+    mPlayerJni.onAudioFrameArrived = env->GetMethodID(jclazz, "onNative_audioFrameArrived", "([BIZ)V");
     mPlayerJni.onPlayCompleted = env->GetMethodID(jclazz, "onNative_playComplete", "()V");
+    mPlayerJni.onPlayProgress = env->GetMethodID(jclazz, "onNative_playProgress", "(D)V");
 }
 
 bool FFMpegPlayer::prepare(JNIEnv *env, std::string &path, jobject surface) {
@@ -76,7 +77,7 @@ bool FFMpegPlayer::prepare(JNIEnv *env, std::string &path, jobject surface) {
             mVideoDecoder->setSurface(nullptr);
             videoPrepared = mVideoDecoder->prepare();
         }
-        if (mPlayerJni.instance != nullptr && mPlayerJni.onVideoPrepared != nullptr) {
+        if (mPlayerJni.isValid()) {
             env->CallVoidMethod(mPlayerJni.instance, mPlayerJni.onVideoPrepared, mVideoDecoder->getWidth(), mVideoDecoder->getHeight());
         }
     }
@@ -92,7 +93,7 @@ bool FFMpegPlayer::prepare(JNIEnv *env, std::string &path, jobject surface) {
             LOGE("[audio] err code: %d, msg: %s", err, msg.c_str())
         });
         audioPrePared = mAudioDecoder->prepare();
-        if (mPlayerJni.instance != nullptr && mPlayerJni.onAudioPrepared != nullptr) {
+        if (mPlayerJni.isValid()) {
             env->CallVoidMethod(mPlayerJni.instance, mPlayerJni.onAudioPrepared);
         }
     }
@@ -303,6 +304,10 @@ void FFMpegPlayer::VideoDecodeLoop() {
             }
             mVideoDecoder->avSync(frame);
             doRender(env, frame);
+            if (!mAudioDecoder && mPlayerJni.isValid()) { // no audio track
+                double timestamp = mVideoDecoder->getTimestamp();
+                env->CallVoidMethod(mPlayerJni.instance, mPlayerJni.onPlayProgress, timestamp);
+            }
         } else {
             LOGE("[video] setOnFrameArrived, has abort")
         }
@@ -339,6 +344,9 @@ void FFMpegPlayer::VideoDecodeLoop() {
                 av_freep(&packet);
                 if (ret == AVERROR_EOF) {
                     LOGE("VideoDecodeLoop AVERROR_EOF")
+                    if (!mAudioDecoder) { // 存在音轨以音频播放结束为准
+                        onPlayCompleted(env);
+                    }
                 }
             } else {
                 LOGE("VideoDecodeLoop pop packet failed...")
@@ -368,6 +376,10 @@ void FFMpegPlayer::AudioDecodeLoop() {
         if (!mHasAbort && mAudioDecoder) {
             mAudioDecoder->avSync(frame);
             doRender(env, frame);
+            if (mPlayerJni.isValid()) {
+                double timestamp = mAudioDecoder->getTimestamp();
+                env->CallVoidMethod(mPlayerJni.instance, mPlayerJni.onPlayProgress, timestamp);
+            }
         } else {
             LOGE("[audio] setOnFrameArrived, has abort")
         }
@@ -404,9 +416,7 @@ void FFMpegPlayer::AudioDecodeLoop() {
                 av_freep(&packet);
                 if (ret == AVERROR_EOF) {
                     LOGE("AudioDecodeLoop AVERROR_EOF")
-                    if (mPlayerJni.instance && mPlayerJni.onPlayCompleted) {
-                        env->CallVoidMethod(mPlayerJni.instance, mPlayerJni.onPlayCompleted);
-                    }
+                    onPlayCompleted(env);
                 }
             } else {
                 LOGE("AudioDecodeLoop pop packet failed...")
@@ -436,7 +446,7 @@ void FFMpegPlayer::doRender(JNIEnv *env, AVFrame *avFrame) {
         auto v = env->NewByteArray(ySize / 4);
         env->SetByteArrayRegion(v, 0, ySize / 4, reinterpret_cast<const jbyte *>(avFrame->data[2]));
 
-        if (mPlayerJni.instance != nullptr && mPlayerJni.onVideoFrameArrived != nullptr) {
+        if (mPlayerJni.isValid()) {
             env->CallVoidMethod(mPlayerJni.instance, mPlayerJni.onVideoFrameArrived,
                                 avFrame->width, avFrame->height, FMT_VIDEO_YUV420, y, u, v);
         }
@@ -456,7 +466,7 @@ void FFMpegPlayer::doRender(JNIEnv *env, AVFrame *avFrame) {
         auto uv = env->NewByteArray(ySize / 2);
         env->SetByteArrayRegion(uv, 0, ySize / 2, reinterpret_cast<const jbyte *>(avFrame->data[1]));
 
-        if (mPlayerJni.instance != nullptr && mPlayerJni.onVideoFrameArrived != nullptr) {
+        if (mPlayerJni.isValid()) {
             env->CallVoidMethod(mPlayerJni.instance, mPlayerJni.onVideoFrameArrived,
                                 avFrame->width, avFrame->height, FMT_VIDEO_NV12, y, uv, nullptr);
         }
@@ -473,7 +483,7 @@ void FFMpegPlayer::doRender(JNIEnv *env, AVFrame *avFrame) {
         auto rgba = env->NewByteArray(size);
         env->SetByteArrayRegion(rgba, 0, size, reinterpret_cast<const jbyte *>(avFrame->data[0]));
 
-        if (mPlayerJni.instance != nullptr && mPlayerJni.onVideoFrameArrived != nullptr) {
+        if (mPlayerJni.isValid()) {
             env->CallVoidMethod(mPlayerJni.instance, mPlayerJni.onVideoFrameArrived,
                                 avFrame->width, avFrame->height, FMT_VIDEO_RGBA, rgba, nullptr, nullptr);
         }
@@ -482,24 +492,20 @@ void FFMpegPlayer::doRender(JNIEnv *env, AVFrame *avFrame) {
     } else if (avFrame->format == AV_PIX_FMT_MEDIACODEC) {
         av_mediacodec_release_buffer((AVMediaCodecBuffer *)avFrame->data[3], 1);
     } else if (avFrame->format == AV_SAMPLE_FMT_FLTP) {
-        if (mAudioDecoder) {
-            // todo need opt
-            int dataSize = mAudioDecoder->mDataSize;
-            double timestamp = mAudioDecoder->getTimestamp();
-            bool flushRender = mAudioDecoder->mNeedFlushRender;
-            if (dataSize > 0) {
-                uint8_t *audioBuffer = mAudioDecoder->mAudioBuffer;
-                if (mIsMute) {
-                    memset(audioBuffer, 0, dataSize);
-                }
-                auto jByteArray = env->NewByteArray(dataSize);
-                env->SetByteArrayRegion(jByteArray, 0, dataSize, reinterpret_cast<const jbyte *>(audioBuffer));
-
-                if (mPlayerJni.instance != nullptr && mPlayerJni.onAudioFrameArrived != nullptr) {
-                    env->CallVoidMethod(mPlayerJni.instance, mPlayerJni.onAudioFrameArrived, jByteArray, dataSize, timestamp, flushRender);
-                }
-                env->DeleteLocalRef(jByteArray);
+        int dataSize = mAudioDecoder->mDataSize;
+        bool flushRender = mAudioDecoder->mNeedFlushRender;
+        if (dataSize > 0) {
+            uint8_t *audioBuffer = mAudioDecoder->mAudioBuffer;
+            if (mIsMute) {
+                memset(audioBuffer, 0, dataSize);
             }
+            auto jByteArray = env->NewByteArray(dataSize);
+            env->SetByteArrayRegion(jByteArray, 0, dataSize, reinterpret_cast<const jbyte *>(audioBuffer));
+
+            if (mPlayerJni.isValid()) {
+                env->CallVoidMethod(mPlayerJni.instance, mPlayerJni.onAudioFrameArrived, jByteArray, dataSize, flushRender);
+            }
+            env->DeleteLocalRef(jByteArray);
         }
     }
 }
@@ -552,4 +558,10 @@ int FFMpegPlayer::getRotate() {
         return mVideoDecoder->getRotate();
     }
     return 0;
+}
+
+void FFMpegPlayer::onPlayCompleted(JNIEnv *env) {
+    if (mPlayerJni.isValid()) {
+        env->CallVoidMethod(mPlayerJni.instance, mPlayerJni.onPlayCompleted);
+    }
 }

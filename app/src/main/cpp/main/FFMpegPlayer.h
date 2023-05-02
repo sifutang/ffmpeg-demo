@@ -29,6 +29,7 @@ typedef struct PlayerJniContext {
     jmethodID onVideoFrameArrived;
     jmethodID onAudioFrameArrived;
     jmethodID onPlayCompleted;
+    jmethodID onPlayProgress;
 
     void reset() {
         instance = nullptr;
@@ -37,6 +38,17 @@ typedef struct PlayerJniContext {
         onVideoFrameArrived = nullptr;
         onAudioFrameArrived = nullptr;
         onPlayCompleted = nullptr;
+        onPlayProgress = nullptr;
+    }
+
+    bool isValid() {
+        return instance != nullptr &&
+        onVideoPrepared != nullptr &&
+        onAudioPrepared != nullptr &&
+        onVideoFrameArrived != nullptr &&
+        onAudioFrameArrived != nullptr &&
+        onPlayCompleted != nullptr &&
+        onPlayProgress != nullptr;
     }
 
 } PlayerJniContext;
@@ -124,6 +136,8 @@ private:
     void AudioDecodeLoop();
 
     void updatePlayerState(PlayerState state);
+
+    void onPlayCompleted(JNIEnv *env);
 };
 
 
