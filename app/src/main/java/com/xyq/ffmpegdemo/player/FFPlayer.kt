@@ -14,7 +14,6 @@ import com.xyq.ffmpegdemo.render.*
 import com.xyq.ffmpegdemo.render.core.CameraDrawer
 import com.xyq.ffmpegdemo.render.model.RenderData
 import com.xyq.ffmpegdemo.utils.CommonUtils
-import com.xyq.ffmpegdemo.view.AudioVisualizeView
 import java.nio.ByteBuffer
 import java.util.*
 import javax.microedition.khronos.egl.EGLConfig
@@ -22,9 +21,7 @@ import javax.microedition.khronos.opengles.GL10
 import kotlin.math.abs
 import kotlin.math.hypot
 
-class FFPlayer(private val mContext: Context,
-               private val mGlSurfaceView: GLSurfaceView,
-               private val mAudioVisualizeView: AudioVisualizeView): GLSurfaceView.Renderer {
+class FFPlayer(private val mContext: Context, private val mGlSurfaceView: GLSurfaceView): GLSurfaceView.Renderer, IMediaPlayer {
 
     companion object {
         private const val TAG = "FFPlayer"
@@ -66,13 +63,7 @@ class FFPlayer(private val mContext: Context,
 
     private var mIsPlayComplete = false
 
-    interface FFPlayerListener {
-        fun onProgress(timestamp: Double)
-
-        fun onComplete()
-    }
-
-    private var mFFPlayerListener: FFPlayerListener? = null
+    private var mMediaPlayerStatusListener: IMediaPlayerStatusListener? = null
 
     init {
         mNativePtr = nativeInit()
@@ -82,7 +73,7 @@ class FFPlayer(private val mContext: Context,
         mGlSurfaceView.setRenderer(this)
         mGlSurfaceView.renderMode = GLSurfaceView.RENDERMODE_WHEN_DIRTY
 
-        mWaterMarkBitmap = CommonUtils.generateTextBitmap("雪月清的随笔", 20f, mContext)
+        mWaterMarkBitmap = CommonUtils.generateTextBitmap("雪月清的随笔", 16f, mContext)
     }
 
     override fun onSurfaceCreated(gl: GL10?, config: EGLConfig?) {
@@ -105,11 +96,11 @@ class FFPlayer(private val mContext: Context,
         mRenderManager.setGreyFilterProgress(value)
     }
 
-    fun setListener(listener: FFPlayerListener?) {
-        mFFPlayerListener = listener
+    override fun setListener(listener: IMediaPlayerStatusListener?) {
+        mMediaPlayerStatusListener = listener
     }
 
-    fun prepare(path: String) {
+    override fun prepare(path: String) {
         if (path.isEmpty()) {
             throw IllegalStateException("must first call setDataSource")
         }
@@ -147,7 +138,7 @@ class FFPlayer(private val mContext: Context,
     /**
      * get file duration, time is s
      */
-    fun getDuration(): Double {
+    override fun getDuration(): Double {
         if (mState < State.PREPARE) {
             throw IllegalStateException("not prepared")
         }
@@ -158,14 +149,14 @@ class FFPlayer(private val mContext: Context,
         return mDuration
     }
 
-    fun isPlayComplete(): Boolean {
+    override fun isPlayComplete(): Boolean {
         return mIsPlayComplete
     }
 
     /**
      * seek to position, time is s
      */
-    fun seek(position: Double): Boolean {
+    override fun seek(position: Double): Boolean {
         if (mState < State.PREPARE || mState >= State.STOP) {
             return false
         }
@@ -174,12 +165,12 @@ class FFPlayer(private val mContext: Context,
         return nativeSeek(mNativePtr, position)
     }
 
-    fun setMute(v: Boolean) {
+    override fun setMute(mute: Boolean) {
         if (mState < State.PREPARE || mState >= State.STOP) {
             return
         }
 
-        nativeSetMute(mNativePtr, v)
+        nativeSetMute(mNativePtr, mute)
     }
 
     fun setFilter(filter: Filter, enable: Boolean) {
@@ -190,12 +181,12 @@ class FFPlayer(private val mContext: Context,
         nativeSetFilter(mNativePtr, filter.ordinal, enable)
     }
 
-    fun start() {
+    override fun start() {
         nativeStart(mNativePtr)
         mState = State.START
     }
 
-    fun resume() {
+    override fun resume() {
         if (mState == State.PAUSE) {
             nativeResume(mNativePtr)
             mState = State.RESUME
@@ -206,7 +197,7 @@ class FFPlayer(private val mContext: Context,
         enableAudioVisualizer(true)
     }
 
-    fun pause() {
+    override fun pause() {
         if (mState == State.START || mState == State.RESUME) {
             nativePause(mNativePtr)
             mState = State.PAUSE
@@ -217,7 +208,7 @@ class FFPlayer(private val mContext: Context,
         enableAudioVisualizer(false)
     }
 
-    fun stop() {
+    override fun stop() {
         if (mState == State.STOP) {
             Log.e(TAG, "has stopped")
             return
@@ -241,7 +232,7 @@ class FFPlayer(private val mContext: Context,
         nativeStop(mNativePtr)
     }
 
-    fun release() {
+    override fun release() {
         mPath = ""
         mState = State.RELEASE
         nativeRelease(mNativePtr)
@@ -285,7 +276,7 @@ class FFPlayer(private val mContext: Context,
                     for (k in 1 until n / 2) {
                         magnitudes[k] = hypot(fft[k * 2].toDouble(), fft[k * 2 + 1].toDouble()).toFloat()
                     }
-                    mAudioVisualizeView.setFftAudioData(magnitudes)
+                    mMediaPlayerStatusListener?.onFftAudioDataArrived(magnitudes)
                 }
             }
         }, maxRate / 2, false, true)
@@ -342,7 +333,7 @@ class FFPlayer(private val mContext: Context,
 
     private fun onNative_playProgress(timestamp: Double) {
         Log.d(TAG, "onNative_playProgress: ${timestamp}ms")
-        mFFPlayerListener?.onProgress(timestamp / 1000)
+        mMediaPlayerStatusListener?.onProgress(timestamp / 1000)
     }
 
     private fun onNative_playComplete() {
@@ -350,7 +341,7 @@ class FFPlayer(private val mContext: Context,
         mState = State.PAUSE
         mIsPlayComplete = true
         enableAudioVisualizer(false)
-        mFFPlayerListener?.onComplete()
+        mMediaPlayerStatusListener?.onComplete()
     }
 
     private external fun nativeInit(): Long

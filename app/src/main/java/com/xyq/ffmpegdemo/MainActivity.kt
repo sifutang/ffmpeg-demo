@@ -19,6 +19,8 @@ import com.xyq.ffmpegdemo.model.ButtonItemModel
 import com.xyq.ffmpegdemo.model.ButtonItemViewModel
 import com.xyq.ffmpegdemo.model.VideoThumbnailViewModel
 import com.xyq.ffmpegdemo.player.FFPlayer
+import com.xyq.ffmpegdemo.player.IMediaPlayer
+import com.xyq.ffmpegdemo.player.IMediaPlayerStatusListener
 import com.xyq.ffmpegdemo.utils.CommonUtils
 import com.xyq.ffmpegdemo.utils.FileUtils
 import com.xyq.ffmpegdemo.utils.TraceUtils
@@ -35,7 +37,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private lateinit var mBinding: ActivityMainBinding
-    private lateinit var mPlayer: FFPlayer
+    private lateinit var mPlayer: IMediaPlayer
     private lateinit var mVideoPath: String
 
     private var mVideoPathForThumbnail = ""
@@ -60,12 +62,12 @@ class MainActivity : AppCompatActivity() {
         initViews()
         initViewModels()
 
-        val text = CommonUtils.generateTextBitmap("雪月清的随笔", 20f, applicationContext)
+        val text = CommonUtils.generateTextBitmap("雪月清的随笔", 16f, applicationContext)
         mBinding.imageView.setImageBitmap(text)
 
         mHasPermission = checkPermission()
 
-        mPlayer = FFPlayer(applicationContext, mBinding.glSurfaceView, mBinding.audioVisualizeView)
+        mPlayer = FFPlayer(applicationContext, mBinding.glSurfaceView)
 
         // preload video thumbnail
         mVideoPath = getDemoVideoPath()
@@ -211,12 +213,6 @@ class MainActivity : AppCompatActivity() {
                 e.printStackTrace()
             }
         }
-
-        mBinding.btnGridFilter.tag = false
-        mBinding.btnGridFilter.setOnClickListener {
-            mPlayer.setFilter(FFPlayer.Filter.GRID, !(it.tag as Boolean))
-            it.tag = !(it.tag as Boolean)
-        }
     }
 
     private fun initViewModels() {
@@ -257,7 +253,7 @@ class MainActivity : AppCompatActivity() {
             mDuration = mPlayer.getDuration()
             Log.i(TAG, "startPlay: duration: $mDuration")
 
-            mPlayer.setListener(object : FFPlayer.FFPlayerListener {
+            mPlayer.setListener(object : IMediaPlayerStatusListener {
 
                 override fun onProgress(timestamp: Double) {
                     runOnUiThread {
@@ -274,6 +270,10 @@ class MainActivity : AppCompatActivity() {
                         mBinding.seekBar.progress = 100
                         mBtnViewModel.mPlayLiveData.value = ButtonItemModel(R.drawable.play_pause, true)
                     }
+                }
+
+                override fun onFftAudioDataArrived(data: FloatArray) {
+                    mBinding.audioVisualizeView.setFftAudioData(data)
                 }
 
             })
@@ -319,7 +319,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
         if (event.action == MotionEvent.ACTION_MOVE) {
-            mPlayer.setFilterProgress(event.x / mBinding.glSurfaceView.width)
+            (mPlayer as FFPlayer).setFilterProgress(event.x / mBinding.glSurfaceView.width)
         }
         return super.onTouchEvent(event)
     }

@@ -34,6 +34,7 @@ bool AudioDecoder::prepare() {
     avcodec_parameters_to_context(mCodecContext, params);
 
     // open codec
+    mCodecContext->flags2 |= AV_CODEC_FLAG2_SKIP_MANUAL;
     int ret = avcodec_open2(mCodecContext, mAudioCodec, nullptr);
     if (ret != 0) {
         std::string msg = "[audio] codec open failed";
