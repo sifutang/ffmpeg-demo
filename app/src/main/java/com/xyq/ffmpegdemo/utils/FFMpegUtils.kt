@@ -26,14 +26,16 @@ object FFMpegUtils {
     fun getVideoFrames(path: String,
                        width: Int,
                        height: Int,
+                       precise: Boolean,
                        cb: VideoFrameArrivedInterface) {
         if (path == "") return
-        getVideoFramesCore(path, width, height, cb)
+        getVideoFramesCore(path, width, height, precise, cb)
     }
 
     private external fun getVideoFramesCore(path: String,
                                             width: Int,
                                             height: Int,
+                                            precise: Boolean,
                                             cb: VideoFrameArrivedInterface)
 
     private fun allocateFrame(width: Int, height: Int): ByteBuffer {

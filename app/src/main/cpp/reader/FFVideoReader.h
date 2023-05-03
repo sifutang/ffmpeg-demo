@@ -3,7 +3,7 @@
 
 #include "FFReader.h"
 
-class FFVideoReader: public FFReader{
+class FFVideoReader: public FFReader {
 
 public:
     FFVideoReader();
@@ -15,7 +15,7 @@ public:
 
     int getRotate();
 
-    void getFrame(int64_t pts, int width, int height, uint8_t *buffer);
+    void getFrame(int64_t pts, int width, int height, uint8_t *buffer, bool precise = true);
 
 private:
     bool mInit = false;

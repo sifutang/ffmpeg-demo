@@ -293,13 +293,13 @@ class MainActivity : AppCompatActivity() {
         width = if (width <= 0) 300 else width
 
         mExecutors.submit {
-            mVideoThumbnailViewModel.loadThumbnail(path, width, 0, mThumbnailViews.size) {
+            mVideoThumbnailViewModel.loadThumbnail(path, width, 0, mThumbnailViews.size, false) {
                 TraceUtils.beginAsyncSection("fetchVideoThumbnail", it.index)
                 runOnUiThread {
                     mVideoThumbnailViewModel.mLiveData.value = it
                     TraceUtils.endAsyncSection("fetchVideoThumbnail", it.index)
                 }
-                return@loadThumbnail 0
+                return@loadThumbnail true
             }
         }
     }

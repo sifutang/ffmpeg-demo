@@ -7,7 +7,7 @@ extern "C"
 JNIEXPORT void JNICALL
 Java_com_xyq_ffmpegdemo_utils_FFMpegUtils_getVideoFramesCore(JNIEnv *env, jobject thiz,
                                                              jstring path, jint width, jint height,
-                                                             jobject cb) {
+                                                             jboolean precise, jobject cb) {
     // path
     const char *c_path = env->GetStringUTFChars(path, nullptr);
     std::string s_path = c_path;
@@ -66,7 +66,7 @@ Java_com_xyq_ffmpegdemo_utils_FFMpegUtils_getVideoFramesCore(JNIEnv *env, jobjec
         memset(buffer, 0, width * height * 4);
 
         auto pts = (int64_t)tsArr[i];
-        reader->getFrame(pts, width, height, buffer);
+        reader->getFrame(pts, width, height, buffer, precise);
         jboolean abort = !env->CallBooleanMethod(cb, onProgress, jByteBuffer, tsArr[i], width, height, rotate, i);
         if (abort) {
             LOGE("onProgress abort")

@@ -17,16 +17,24 @@ class VideoThumbnailViewModel: ViewModel() {
 
     private var mVideoPath = ""
 
+    /**
+     * @param path video path
+     * @param width frame width, if <= 0, auto calculate
+     * @param height frame height, if <= 0, auto calculate
+     * @param size frame count
+     * @param precise if false, frame is keyframe
+     */
     fun loadThumbnail(path: String,
                       width: Int,
                       height: Int,
                       size: Int,
-                      onDataReceive: (VideoThumbnailModel) -> Int) {
+                      precise: Boolean,
+                      onDataReceive: (VideoThumbnailModel) -> Boolean) {
         TraceUtils.beginSection("loadThumbnail")
         val start = System.currentTimeMillis()
         Log.i(TAG, "loadThumbnail: width: $width, height: $height, path: $path")
         mVideoPath = path
-        FFMpegUtils.getVideoFrames(path, width, height, object : FFMpegUtils.VideoFrameArrivedInterface {
+        FFMpegUtils.getVideoFrames(path, width, height, precise, object : FFMpegUtils.VideoFrameArrivedInterface {
 
             override fun onFetchStart(duration: Double): DoubleArray {
                 val step = duration / size
@@ -34,7 +42,6 @@ class VideoThumbnailViewModel: ViewModel() {
                 for (i in 0 until size) {
                     ptsArr[i] = i * step
                 }
-                ptsArr[0] = 1.0 // 演示视频前几帧都是黑帧
                 Log.i(TAG, "onFetchStart: $duration, ptsArr: ${ptsArr.contentToString()}")
                 return ptsArr
             }

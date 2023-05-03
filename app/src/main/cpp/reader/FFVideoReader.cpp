@@ -31,13 +31,13 @@ bool FFVideoReader::init(std::string &path) {
     return mInit;
 }
 
-void FFVideoReader::getFrame(int64_t pts, int width, int height, uint8_t *buffer) {
+void FFVideoReader::getFrame(int64_t pts, int width, int height, uint8_t *buffer, bool precise) {
     int64_t start = getCurrentTimeMs();
     LOGI("[FFVideoReader], getFrame: %" PRId64 ", mLastPts: %" PRId64 ", width: %d, height: %d", pts, mLastPts, width, height)
     if (mLastPts == -1) {
         LOGI("[FFVideoReader], seek")
         seek(pts);
-    } else if (getKeyFrameIndex(mLastPts) != getKeyFrameIndex(pts)) {
+    } else if (!precise || getKeyFrameIndex(mLastPts) != getKeyFrameIndex(pts)) {
         LOGI("[FFVideoReader], flush & seek")
         flush();
         seek(pts);
@@ -65,17 +65,23 @@ void FFVideoReader::getFrame(int64_t pts, int width, int height, uint8_t *buffer
             break;
         }
 
-        avcodec_send_packet(codecContext, pkt);
-        avcodec_receive_frame(codecContext, frame);
+        int sendRes = avcodec_send_packet(codecContext, pkt);
+        int receiveRes = avcodec_receive_frame(codecContext, frame);
         decodeCount++;
+        LOGD("[FFVideoReader], receiveRes: %d, sendRes: %d", receiveRes, sendRes)
+        if (receiveRes == AVERROR(EAGAIN)) {
+            continue;
+        }
 
+        // 非精准抽帧
+        if (!precise) {
+            find = true;
+            break;
+        }
+
+        // 精准抽帧
         if (frame->pts >= target) {
             find = true;
-            LOGE("[FFVideoReader], get frame decode done, pts: %" PRId64 ", time: %f, format: %d, consume: %" PRId64 ", decodeCount: %d",
-                 frame->pts,
-                 (frame->pts * av_q2d(mediaInfo.video_time_base)),
-                 frame->format,
-                 (getCurrentTimeMs() - start), decodeCount)
             break;
         }
 
@@ -84,7 +90,15 @@ void FFVideoReader::getFrame(int64_t pts, int width, int height, uint8_t *buffer
     }
 
     if (find) {
-        if (frame->format == AV_PIX_FMT_YUV420P) {
+        LOGE("[FFVideoReader], get frame decode done, pts: %" PRId64 ", time: %f, format: %d, consume: %" PRId64 ", decodeCount: %d",
+             frame->pts,
+             (frame->pts * av_q2d(mediaInfo.video_time_base)),
+             frame->format,
+             (getCurrentTimeMs() - start), decodeCount);
+
+        if (frame->format == AV_PIX_FMT_NONE) {
+            assert(false);
+        } else if (frame->format == AV_PIX_FMT_YUV420P) {
             if (needScale) {
                 int64_t scaleBufferSize = width * height * 3 / 2;
                 if (mScaleBuffer && scaleBufferSize != mScaleBufferSize) {
