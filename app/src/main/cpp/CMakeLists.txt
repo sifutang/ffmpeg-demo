@@ -91,9 +91,10 @@ add_library( # Sets the name of the library.
         ./decoder/AudioDecoder.cpp
 
         ./base/AVPacketQueue.cpp
-        reader/FFReader.cpp
-
+        ./reader/FFReader.cpp
         ./reader/FFVideoReader.cpp
+
+        filter/FFFilter.cpp
 
         utils/Logger.h
         utils/ImageDef.h

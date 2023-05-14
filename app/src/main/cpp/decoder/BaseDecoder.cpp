@@ -60,3 +60,11 @@ bool BaseDecoder::isNeedResent() const {
 void BaseDecoder::needFixStartTime() {
     mFixStartTime = true;
 }
+
+AVCodecContext *BaseDecoder::getCodecContext() {
+    return mCodecContext;
+}
+
+AVRational BaseDecoder::getTimeBase() {
+    return mTimeBase;
+}

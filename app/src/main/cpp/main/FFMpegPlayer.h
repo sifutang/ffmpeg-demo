@@ -12,6 +12,7 @@
 #include "../decoder/VideoDecoder.h"
 #include "../decoder/AudioDecoder.h"
 #include "../base/AVPacketQueue.h"
+#include "../filter/FFFilter.h"
 
 extern "C" {
 #include "../vendor/ffmpeg/libavutil/avutil.h"
@@ -62,10 +63,6 @@ enum PlayerState {
     STOP
 };
 
-enum Filter {
-    GRID = 0
-};
-
 class FFMpegPlayer {
 
 public:
@@ -87,8 +84,6 @@ public:
     void stop();
 
     void setMute(bool mute);
-
-    void setFilter(int filter, bool enable);
 
     bool seek(double timeS);
 
@@ -122,6 +117,10 @@ private:
     std::shared_ptr<AudioDecoder> mAudioDecoder = nullptr;
 
     AVFormatContext *mFtx = nullptr;
+
+    // 网格滤镜，软解有效，硬解用OpenGL实现
+    bool mEnableGridFilter = false;
+    std::unique_ptr<FFFilter> mGridFilter = nullptr;
 
     void doRender(JNIEnv *env, AVFrame *avFrame);
 

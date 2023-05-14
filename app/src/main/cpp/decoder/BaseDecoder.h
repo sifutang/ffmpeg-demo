@@ -32,6 +32,10 @@ public:
 
     virtual void release();
 
+    AVCodecContext *getCodecContext();
+
+    AVRational getTimeBase();
+
     bool isNeedResent() const;
 
     int getStreamIndex() const;

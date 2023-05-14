@@ -71,12 +71,25 @@ bool FFMpegPlayer::prepare(JNIEnv *env, std::string &path, jobject surface) {
 
         mVideoDecoder->setSurface(surface);
         videoPrepared = mVideoDecoder->prepare();
+        bool isHwDecoder = surface != nullptr;
         if (surface != nullptr && !videoPrepared) {
             mVideoDecoder->release();
             LOGE("[video] hw decoder prepare failed, fallback to software decoder")
             mVideoDecoder->setSurface(nullptr);
             videoPrepared = mVideoDecoder->prepare();
+            isHwDecoder = false;
         }
+
+        if (!isHwDecoder && mEnableGridFilter) {
+            mGridFilter = std::make_unique<FFFilter>();
+            std::string graphInArgs;
+            std::string filterDesc;
+            FFFilter::createGridFilterDesc(mVideoDecoder->getCodecContext(), mVideoDecoder->getTimeBase(), graphInArgs, filterDesc);
+            if (!mGridFilter->init(graphInArgs, filterDesc)) {
+                mGridFilter = nullptr;
+            }
+        }
+
         if (mPlayerJni.isValid()) {
             env->CallVoidMethod(mPlayerJni.instance, mPlayerJni.onVideoPrepared, mVideoDecoder->getWidth(), mVideoDecoder->getHeight());
         }
@@ -302,8 +315,15 @@ void FFMpegPlayer::VideoDecodeLoop() {
                 auto diff = mAudioDecoder->getTimestamp() - mVideoDecoder->getTimestamp();
                 LOGW("[video] frame arrived, AV time diff: %" PRId64, diff)
             }
+            AVFrame *finalFrame = nullptr;
+            if (mGridFilter != nullptr) {
+                finalFrame = mGridFilter->process(frame);
+            }
+            if (finalFrame == nullptr) {
+                finalFrame = frame;
+            }
             mVideoDecoder->avSync(frame);
-            doRender(env, frame);
+            doRender(env, finalFrame);
             if (!mAudioDecoder && mPlayerJni.isValid()) { // no audio track
                 double timestamp = mVideoDecoder->getTimestamp();
                 env->CallVoidMethod(mPlayerJni.instance, mPlayerJni.onPlayProgress, timestamp);
@@ -545,12 +565,6 @@ void FFMpegPlayer::updatePlayerState(PlayerState state) {
     }
     LOGI("updatePlayerState from %d to %d", mPlayerState, state);
     mPlayerState = state;
-}
-
-void FFMpegPlayer::setFilter(int filterVal, bool enable) {
-    if (filterVal == Filter::GRID && mVideoDecoder) {
-        mVideoDecoder->enableGridFilter(enable);
-    }
 }
 
 int FFMpegPlayer::getRotate() {

@@ -38,10 +38,6 @@ class FFPlayer(private val mContext: Context, private val mGlSurfaceView: GLSurf
         RELEASE
     }
 
-    enum class Filter {
-        GRID
-    }
-
     private var mNativePtr = -1L
 
     private var mAudioTrack: AudioTrack? = null
@@ -171,14 +167,6 @@ class FFPlayer(private val mContext: Context, private val mGlSurfaceView: GLSurf
         }
 
         nativeSetMute(mNativePtr, mute)
-    }
-
-    fun setFilter(filter: Filter, enable: Boolean) {
-        if (mState < State.PREPARE || mState >= State.STOP) {
-            return
-        }
-
-        nativeSetFilter(mNativePtr, filter.ordinal, enable)
     }
 
     override fun start() {
@@ -349,8 +337,6 @@ class FFPlayer(private val mContext: Context, private val mGlSurfaceView: GLSurf
     private external fun nativeSeek(handle: Long, position: Double): Boolean
 
     private external fun nativeSetMute(handle: Long, mute: Boolean)
-
-    private external fun nativeSetFilter(handle: Long, filter: Int, enable: Boolean)
 
     private external fun nativePrepare(handle: Long, path: String, surface: Surface?): Boolean
 

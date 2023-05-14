@@ -141,8 +141,6 @@ bool VideoDecoder::prepare() {
     mRetryReceiveCount = 7;
     LOGI("codec name: %s", mVideoCodec->name)
 
-    initFilters();
-
     return true;
 }
 
@@ -181,40 +179,26 @@ int VideoDecoder::decode(AVPacket *avPacket) {
     LOGI("[video] avcodec_receive_frame...pts: %" PRId64 ", time: %f, format: %d, need retry: %d", mAvFrame->pts, ptsMs, mAvFrame->format, mNeedResent)
     int64_t receivePoint = getCurrentTimeMs() - start;
 
-    AVFrame *finalFrame = mAvFrame;
-    if (mEnableFilter && mBufferSinkCtx && mBufferScrCtx) {
-        int ret = av_buffersrc_add_frame_flags(mBufferScrCtx, mAvFrame, AV_BUFFERSRC_FLAG_KEEP_REF);
-        LOGI("av_buffersrc_add_frame_flags, ret: %d", ret)
-        if (mFilterAvFrame == nullptr) {
-            mFilterAvFrame = av_frame_alloc();
-        }
-        ret = av_buffersink_get_frame(mBufferSinkCtx, mFilterAvFrame);
-        LOGI("av_buffersink_get_frame, ret: %d, format: %d", ret, mFilterAvFrame->format)
-        if (ret >= 0) {
-            finalFrame = mFilterAvFrame;
-        }
-    }
+    updateTimestamp(mAvFrame);
 
-    updateTimestamp(finalFrame);
-
-    if (finalFrame->pts >= mSeekPos) {
+    if (mAvFrame->pts >= mSeekPos) {
         mSeekPos = INT64_MAX;
         mSeekEndTimeMs = getCurrentTimeMs();
         int64_t precisionSeekConsume = mSeekEndTimeMs - mSeekStartTimeMs;
         LOGE("[video] avcodec_receive_frame...pts: %" PRId64 ", precision seek consume: %" PRId64, mAvFrame->pts, precisionSeekConsume)
     }
 
-    if (finalFrame->format == AV_PIX_FMT_YUV420P || mAvFrame->format == AV_PIX_FMT_NV12 || mAvFrame->format == hw_pix_fmt) {
+    if (mAvFrame->format == AV_PIX_FMT_YUV420P || mAvFrame->format == AV_PIX_FMT_NV12 || mAvFrame->format == hw_pix_fmt) {
         if (mOnFrameArrivedListener) {
-            mOnFrameArrivedListener(finalFrame);
+            mOnFrameArrivedListener(mAvFrame);
         }
-    } else if (finalFrame->format != AV_PIX_FMT_NONE) { // mAvFrame->format == AV_PIX_FMT_YUV420P10LE先转为RGBA进行渲染
+    } else if (mAvFrame->format != AV_PIX_FMT_NONE) { // mAvFrame->format == AV_PIX_FMT_YUV420P10LE先转为RGBA进行渲染
         AVFrame *swFrame = av_frame_alloc();
-        int size = av_image_get_buffer_size(AV_PIX_FMT_RGBA, finalFrame->width, finalFrame->height, 1);
+        int size = av_image_get_buffer_size(AV_PIX_FMT_RGBA, mAvFrame->width, mAvFrame->height, 1);
         auto *buffer = static_cast<uint8_t *>(av_malloc(size * sizeof(uint8_t)));
-        av_image_fill_arrays(swFrame->data, swFrame->linesize, buffer, AV_PIX_FMT_RGBA, finalFrame->width, finalFrame->height, 1);
+        av_image_fill_arrays(swFrame->data, swFrame->linesize, buffer, AV_PIX_FMT_RGBA, mAvFrame->width, mAvFrame->height, 1);
 
-        if (swsScale(finalFrame, swFrame) > 0) {
+        if (swsScale(mAvFrame, swFrame) > 0) {
             if (mOnFrameArrivedListener) {
                 mOnFrameArrivedListener(swFrame);
             }
@@ -227,7 +211,6 @@ int VideoDecoder::decode(AVPacket *avPacket) {
         LOGE("[video] frame format is AV_PIX_FMT_NONE")
     }
 
-    av_frame_unref(mFilterAvFrame);
     av_frame_unref(mAvFrame);
 
     LOGW("[video] decode consume: %" PRId64, receivePoint)
@@ -341,26 +324,6 @@ void VideoDecoder::release() {
         LOGI("sws context...release")
     }
 
-    if (mFilterAvFrame != nullptr) {
-        av_frame_free(&mFilterAvFrame);
-        av_freep(&mFilterAvFrame);
-    }
-
-    if (mFilterInputs != nullptr) {
-        avfilter_inout_free(&mFilterInputs);
-        mFilterInputs = nullptr;
-    }
-
-    if (mFilterOutputs != nullptr) {
-        avfilter_inout_free(&mFilterOutputs);
-        mFilterOutputs = nullptr;
-    }
-
-    if (mFilterGraph != nullptr) {
-        avfilter_graph_free(&mFilterGraph);
-        mFilterGraph = nullptr;
-    }
-
     if (mMediaCodecContext != nullptr) {
         av_mediacodec_default_free(mCodecContext);
         mMediaCodecContext = nullptr;
@@ -379,88 +342,6 @@ void VideoDecoder::release() {
         mCodecContext = nullptr;
         LOGI("codec...release")
     }
-}
-
-void VideoDecoder::initFilters() {
-    const AVFilter *bufferSrc = avfilter_get_by_name("buffer");
-    const AVFilter *bufferSink = avfilter_get_by_name("buffersink");
-
-    mFilterOutputs = avfilter_inout_alloc();
-    mFilterInputs = avfilter_inout_alloc();
-    mFilterGraph = avfilter_graph_alloc();
-    if (!mFilterOutputs || !mFilterInputs || !mFilterGraph) {
-        LOGE("initFilters failed")
-        return;
-    }
-
-    int ret;
-    do {
-        char args[512];
-        snprintf(args, sizeof(args),
-                 "video_size=%dx%d:pix_fmt=%d:time_base=%d/%d:pixel_aspect=%d/%d",
-                 mCodecContext->width, mCodecContext->height, mCodecContext->pix_fmt,
-                 mTimeBase.num, mTimeBase.den,
-                 mCodecContext->sample_aspect_ratio.num, mCodecContext->sample_aspect_ratio.den);
-        LOGE("avfilter_graph_create_filter, args: %s", args)
-        ret = avfilter_graph_create_filter(&mBufferScrCtx, bufferSrc, "in", args, nullptr, mFilterGraph);
-        if (ret < 0) {
-            LOGE("Cannot create buffer source, ret: %d", ret)
-            break;
-        }
-
-        ret = avfilter_graph_create_filter(&mBufferSinkCtx, bufferSink, "out", nullptr, nullptr, mFilterGraph);
-        if (ret < 0) {
-            LOGE("Cannot create buffer sink, ret: %d", ret)
-            break;
-        }
-
-        enum AVPixelFormat pix_fmts[] = {AV_PIX_FMT_YUV420P, AV_PIX_FMT_NONE};
-        ret = av_opt_set_int_list(mBufferSinkCtx, "pix_fmts", pix_fmts,
-                                  AV_PIX_FMT_NONE, AV_OPT_SEARCH_CHILDREN);
-        if(ret < 0) {
-            LOGE("set output pixel format failed, err=%d", ret);
-            break;
-        }
-
-        mFilterOutputs->name = av_strdup("in");
-        mFilterOutputs->filter_ctx = mBufferScrCtx;
-        mFilterOutputs->pad_idx = 0;
-        mFilterOutputs->next = nullptr;
-
-        mFilterInputs->name = av_strdup("out");
-        mFilterInputs->filter_ctx = mBufferSinkCtx;
-        mFilterInputs->pad_idx = 0;
-        mFilterInputs->next = nullptr;
-
-        // ffmpeg -h filter=drawgrid
-        std::string filterDesc = "drawgrid=w=iw/3:h=ih/3:t=2:c=white@0.5";
-        ret = avfilter_graph_parse_ptr(mFilterGraph, filterDesc.c_str(), &mFilterInputs, &mFilterOutputs, nullptr);
-        LOGI("avfilter_graph_parse_ptr, ret: %d", ret)
-        if (ret < 0) {
-            break;
-        }
-
-        ret = avfilter_graph_config(mFilterGraph, nullptr);
-        LOGI("avfilter_graph_config, ret: %d", ret)
-    } while (false);
-
-    if (ret < 0) {
-        avfilter_inout_free(&mFilterInputs);
-        mFilterInputs = nullptr;
-        avfilter_inout_free(&mFilterOutputs);
-        mFilterOutputs = nullptr;
-
-        mBufferScrCtx = nullptr;
-        mBufferSinkCtx = nullptr;
-
-        avfilter_graph_free(&mFilterGraph);
-        mFilterGraph = nullptr;
-        LOGE("initFilters failed, clean ctx")
-    }
-}
-
-void VideoDecoder::enableGridFilter(bool enable) {
-    mEnableFilter = enable;
 }
 
 int VideoDecoder::getRotate() {

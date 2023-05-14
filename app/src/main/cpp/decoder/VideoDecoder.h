@@ -10,10 +10,6 @@ extern "C" {
 #include "../vendor/ffmpeg/libavcodec/mediacodec.h"
 #include "../vendor/ffmpeg/libswscale/swscale.h"
 #include "../vendor/ffmpeg/libavutil/imgutils.h"
-#include "../vendor/ffmpeg/libavfilter/avfilter.h"
-#include "../vendor/ffmpeg/libavfilter/buffersrc.h"
-#include "../vendor/ffmpeg/libavfilter/buffersink.h"
-#include "../vendor/ffmpeg/libavutil/opt.h"
 #include "../vendor/ffmpeg/libavutil/display.h"
 }
 
@@ -43,8 +39,6 @@ public:
 
     int64_t getTimestamp() const;
 
-    void enableGridFilter(bool enable);
-
     int getRotate();
 
 private:
@@ -68,20 +62,9 @@ private:
 
     SwsContext *mSwsContext = nullptr;
 
-    bool mEnableFilter = false;
-    AVFrame *mFilterAvFrame = nullptr;
-    AVFilterContext *mBufferScrCtx = nullptr;
-    AVFilterContext *mBufferSinkCtx = nullptr;
-    AVFilterInOut *mFilterOutputs = nullptr;
-    AVFilterInOut *mFilterInputs = nullptr;
-    AVFilterGraph *mFilterGraph = nullptr;
-
     void updateTimestamp(AVFrame *frame);
 
     int swsScale(AVFrame *srcFrame, AVFrame *swFrame);
-
-    void initFilters();
-
 };
 
 
