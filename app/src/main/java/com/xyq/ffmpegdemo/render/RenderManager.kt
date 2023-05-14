@@ -32,7 +32,7 @@ class RenderManager(private val mContext: Context) {
 
     private var mVideoRotate = 0
 
-    private var mGreyIdentity = 0.5f
+    private var mGreyIdentity = 0.0f
 
     private var mVideoDrawer: IDrawer? = null
     private var mDisplayDrawer: IDrawer? = null
@@ -144,7 +144,13 @@ class RenderManager(private val mContext: Context) {
     }
 
     fun setGreyFilterProgress(value: Float) {
-        mGreyIdentity = value
+        mGreyIdentity = if (value < 0) {
+            0.0f
+        } else if (value > 1.0f) {
+            1.0f
+        } else {
+            value
+        }
     }
 
     fun draw() {

@@ -128,6 +128,7 @@ class FFPlayer(private val mContext: Context, private val mGlSurfaceView: GLSurf
         mDuration = getDuration()
         mVideoRotate = nativeGetRotate(mNativePtr)
         mRenderManager.setVideoRotate(mVideoRotate)
+        mRenderManager.setGreyFilterProgress(0.5f)
         Log.i(TAG, "prepare: done, duration: $mDuration, rotate: $mVideoRotate")
     }
 
