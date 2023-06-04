@@ -7,9 +7,12 @@ extern "C" {
 #include "libavutil/display.h"
 }
 
-FFVideoReader::FFVideoReader() = default;
+FFVideoReader::FFVideoReader() {
+    LOGI("FFVideoReader")
+}
 
 FFVideoReader::~FFVideoReader() {
+    LOGI("~FFVideoReader")
     if (mSwsContext != nullptr) {
         sws_freeContext(mSwsContext);
         mSwsContext = nullptr;
@@ -20,6 +23,12 @@ FFVideoReader::~FFVideoReader() {
         free(mScaleBuffer);
         mScaleBuffer = nullptr;
     }
+
+    if (mAvFrame != nullptr) {
+        av_frame_free(&mAvFrame);
+        av_free(mAvFrame);
+        mAvFrame = nullptr;
+    }
 }
 
 bool FFVideoReader::init(std::string &path) {
@@ -27,7 +36,7 @@ bool FFVideoReader::init(std::string &path) {
     if (mInit) {
         mInit = selectTrack(Track_Video);
     }
-    LOGE("[FFVideoReader], init: %d", mInit)
+    LOGI("[FFVideoReader], init: %d", mInit)
     return mInit;
 }
 
@@ -181,7 +190,42 @@ void FFVideoReader::getFrame(int64_t pts, int width, int height, uint8_t *buffer
     av_frame_unref(frame);
     av_frame_free(&frame);
     av_free(frame);
+}
 
+
+void FFVideoReader::getNextFrame(std::function<void(AVFrame *)> frameArrivedCallback) {
+    if (mAvFrame == nullptr) {
+        mAvFrame = av_frame_alloc();
+    }
+    AVPacket *pkt = av_packet_alloc();
+    AVFrame *frame = nullptr;
+    while (true) {
+        int ret = fetchAvPacket(pkt);
+        if (ret < 0) {
+            LOGE("[FFVideoReader], getNextFrame fetchAvPacket failed: %d", ret)
+            break;
+        }
+
+        int sendRes = avcodec_send_packet(getCodecContext(), pkt);
+        int receiveRes = avcodec_receive_frame(getCodecContext(), mAvFrame);
+        LOGD("[FFVideoReader], getNextFrame receiveRes: %d, sendRes: %d, isKeyFrame: %d", receiveRes, sendRes, isKeyFrame(pkt))
+        av_packet_unref(pkt);
+
+        if (receiveRes == AVERROR(EAGAIN)) {
+            continue;
+        }
+
+        if (receiveRes == 0) {
+            frame = mAvFrame;
+        }
+        break;
+    }
+    av_packet_free(&pkt);
+
+    if (frameArrivedCallback) {
+        frameArrivedCallback(frame);
+    }
+    av_frame_unref(mAvFrame);
 }
 
 int FFVideoReader::getRotate(AVStream *stream) {

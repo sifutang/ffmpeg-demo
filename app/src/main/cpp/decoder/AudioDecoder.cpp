@@ -198,7 +198,6 @@ void AudioDecoder::release() {
     }
 
     if (mCodecContext != nullptr) {
-        avcodec_close(mCodecContext);
         avcodec_free_context(&mCodecContext);
         mCodecContext = nullptr;
         LOGI("[audio] codec...release")

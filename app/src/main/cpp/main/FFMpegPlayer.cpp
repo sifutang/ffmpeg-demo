@@ -360,8 +360,8 @@ void FFMpegPlayer::VideoDecodeLoop() {
                     ret = mVideoDecoder->decode(packet);
                 } while (mVideoDecoder->isNeedResent());
 
+                av_packet_unref(packet);
                 av_packet_free(&packet);
-                av_freep(&packet);
                 if (ret == AVERROR_EOF) {
                     LOGE("VideoDecodeLoop AVERROR_EOF")
                     if (!mAudioDecoder) { // 存在音轨以音频播放结束为准
@@ -432,8 +432,8 @@ void FFMpegPlayer::AudioDecodeLoop() {
                     ret = mAudioDecoder->decode(packet);
                 } while (mAudioDecoder->isNeedResent());
 
+                av_packet_unref(packet);
                 av_packet_free(&packet);
-                av_freep(&packet);
                 if (ret == AVERROR_EOF) {
                     LOGE("AudioDecodeLoop AVERROR_EOF")
                     onPlayCompleted(env);

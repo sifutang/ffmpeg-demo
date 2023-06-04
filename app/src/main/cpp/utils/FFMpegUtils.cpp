@@ -1,6 +1,7 @@
 #include <jni.h>
-
+#include <memory.h>
 #include "../reader/FFVideoReader.h"
+#include "../writer/FFVideoWriter.h"
 #include "Logger.h"
 
 extern "C"
@@ -29,7 +30,7 @@ Java_com_xyq_ffmpegdemo_utils_FFMpegUtils_getVideoFramesCore(JNIEnv *env, jobjec
     jmethodID onFetchEnd = env->GetMethodID(jclazz, "onFetchEnd", "()V");
 
     auto *reader = new FFVideoReader();
-    reader->enableSkipNonRefFrame(true);
+    reader->setDiscardType(DISCARD_NONREF);
     reader->init(s_path);
 
     int videoWidth = reader->getMediaInfo().width;
@@ -44,7 +45,7 @@ Java_com_xyq_ffmpegdemo_utils_FFMpegUtils_getVideoFramesCore(JNIEnv *env, jobjec
         }
         height = (jint)(1.0 * width * videoHeight / videoWidth);
         height += height % 2;
-    } else if (height > 0 && width <= 0) { // scale base height
+    } else if (width <= 0) { // scale base height
         height += height % 2;
         if (height > videoHeight) {
             height = videoHeight;
@@ -85,4 +86,58 @@ Java_com_xyq_ffmpegdemo_utils_FFMpegUtils_getVideoFramesCore(JNIEnv *env, jobjec
     if (tsArr != nullptr) {
         env->ReleaseDoubleArrayElements(timestamps, tsArr, 0);
     }
+}
+extern "C"
+JNIEXPORT jboolean JNICALL
+Java_com_xyq_ffmpegdemo_utils_FFMpegUtils_nativeExportGif(JNIEnv *env, jobject thiz,
+                                                          jstring video_path, jstring output) {
+    const char *input_path = env->GetStringUTFChars(video_path, nullptr);
+    const char *output_path = env->GetStringUTFChars(output, nullptr);
+    std::string inputPath = input_path;
+    std::string outputPath = output_path;
+
+    // init reader
+    auto reader = std::make_unique<FFVideoReader>();
+    reader->setDiscardType(DISCARD_NONKEY);
+    reader->init(inputPath);
+
+    // init writer
+    auto codecParam = reader->getCodecParameters();
+    CompileSettings compileSettings;
+    compileSettings.width = codecParam->width;
+    compileSettings.height = codecParam->height;
+    compileSettings.encodeType = ENCODE_TYPE_GIF;
+    compileSettings.pixelFormat = PIX_FMT_RGB8;
+    compileSettings.mediaType = MEDIA_TYPE_VIDEO;
+    compileSettings.bitRate = codecParam->bit_rate;
+    compileSettings.gopSize = 0;
+    compileSettings.fps = 10;
+
+    auto writer = std::make_unique<FFVideoWriter>();
+    writer->init(outputPath, compileSettings);
+
+    // loop encode
+    int ret = 0;
+    while (true) {
+        reader->getNextFrame([&](AVFrame *avFrame) {
+            if (avFrame != nullptr) {
+                writer->encode(avFrame);
+            } else {
+                ret = -1;
+            }
+        });
+        if (ret < 0) {
+            break;
+        }
+    }
+    writer->signalEof();
+
+    if (input_path != nullptr) {
+        env->ReleaseStringUTFChars(video_path, input_path);
+    }
+    if (output_path != nullptr) {
+        env->ReleaseStringUTFChars(output, output_path);
+    }
+
+    return true;
 }

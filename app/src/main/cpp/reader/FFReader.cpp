@@ -1,9 +1,14 @@
 #include "FFReader.h"
 #include "../utils/Logger.h"
 
-FFReader::FFReader() = default;
+FFReader::FFReader() {
+    LOGI("FFReader")
+}
 
-FFReader::~FFReader() = default;
+FFReader::~FFReader() {
+    release();
+    LOGI("~FFReader")
+}
 
 bool FFReader::init(std::string &path) {
     mFtx = avformat_alloc_context();
@@ -19,7 +24,6 @@ void FFReader::release() {
     for (int i = 0; i < 2; i++) {
         AVCodecContext *codecContext = mCodecContextArr[i];
         if (codecContext != nullptr) {
-            avcodec_close(codecContext);
             avcodec_free_context(&codecContext);
         }
         mCodecContextArr[i] = nullptr;
@@ -92,8 +96,19 @@ int FFReader::prepare() {
         mMediaInfo.video_time_base = mFtx->streams[mCurStreamIndex]->time_base;
         mMediaInfo.width = codecContext->width;
         mMediaInfo.height = codecContext->height;
-        if (mSkipNonRefFrame) {
-            codecContext->skip_frame = AVDISCARD_NONREF;
+        if (mDiscardType != DISCARD_NONE) {
+            switch (mDiscardType) {
+                case DISCARD_NONREF: {
+                    codecContext->skip_frame = AVDISCARD_NONREF;
+                    break;
+                }
+                case DISCARD_NONKEY: {
+                    codecContext->skip_frame = AVDISCARD_NONKEY;
+                    break;
+                }
+                default:
+                    break;
+            }
         }
     } else if (type == Track_Audio) {
         mMediaInfo.audioIndex = mAudioIndex;
@@ -108,23 +123,26 @@ int FFReader::prepare() {
 }
 
 int FFReader::fetchAvPacket(AVPacket *pkt) {
-    AVPacket *tmp = av_packet_alloc();
     int ret = -1;
-    while (av_read_frame(mFtx, tmp) == 0) {
-        if (tmp->stream_index == mFtx->streams[mCurStreamIndex]->index) {
-            av_packet_ref(pkt, tmp);
+    while (av_read_frame(mFtx, pkt) == 0) {
+        if (pkt->stream_index == mFtx->streams[mCurStreamIndex]->index) {
             ret = 0;
             break;
         }
-        av_packet_unref(tmp);
+        av_packet_unref(pkt);
     }
-    av_packet_free(&tmp);
-    av_free(tmp);
+    if (ret != 0) {
+        av_packet_unref(pkt);
+    }
     return ret;
 }
 
 AVCodecContext *FFReader::getCodecContext() {
     return mCodecContextArr[mCurTrackType];
+}
+
+AVCodecParameters *FFReader::getCodecParameters() {
+    return mFtx->streams[mCurStreamIndex]->codecpar;
 }
 
 int FFReader::getKeyFrameIndex(int64_t timestamp) {
@@ -165,6 +183,6 @@ double FFReader::getDuration() {
     return duration * av_q2d(time_base);
 }
 
-void FFReader::enableSkipNonRefFrame(bool enable) {
-    mSkipNonRefFrame = enable;
+void FFReader::setDiscardType(DiscardType type) {
+    mDiscardType = type;
 }

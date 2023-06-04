@@ -11,6 +11,7 @@ import android.view.MotionEvent
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.SeekBar
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.res.ResourcesCompat
 import androidx.lifecycle.ViewModelProvider
@@ -22,6 +23,7 @@ import com.xyq.ffmpegdemo.player.FFPlayer
 import com.xyq.ffmpegdemo.player.IMediaPlayer
 import com.xyq.ffmpegdemo.player.IMediaPlayerStatusListener
 import com.xyq.ffmpegdemo.utils.CommonUtils
+import com.xyq.ffmpegdemo.utils.FFMpegUtils
 import com.xyq.ffmpegdemo.utils.FileUtils
 import com.xyq.ffmpegdemo.utils.TraceUtils
 import java.util.concurrent.Executors
@@ -45,6 +47,7 @@ class MainActivity : AppCompatActivity() {
 
     private var mHasPermission = false
     private var mIsSeeking = false
+    private var mIsExporting = false
     private var mDuration = -1.0
 
     private var mExecutors = Executors.newFixedThreadPool(2)
@@ -96,6 +99,7 @@ class MainActivity : AppCompatActivity() {
     override fun onDestroy() {
         TraceUtils.beginSection("MainActivity#onDestroy")
         Log.i(TAG, "onDestroy: ")
+        mIsExporting = false
         super.onDestroy()
         mPlayer.release()
         mExecutors.shutdown()
@@ -150,7 +154,6 @@ class MainActivity : AppCompatActivity() {
             mBinding.videoThumbnails.addView(imageView)
             mThumbnailViews.add(imageView)
         }
-
 
         mBinding.seekBar.isEnabled = false
         mBinding.seekBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
@@ -211,6 +214,34 @@ class MainActivity : AppCompatActivity() {
                 startActivityForResult(Intent.createChooser(intent, "选择播放文件"), 2000)
             } catch (e: ActivityNotFoundException) {
                 e.printStackTrace()
+            }
+        }
+
+        mBinding.btnExportGif.setOnClickListener {
+            if (mIsExporting) {
+                Log.e(TAG, "exportGif doing")
+                return@setOnClickListener
+            }
+            mIsExporting = true
+
+            mExecutors.submit {
+                TraceUtils.beginSection("delete pre-gif")
+                val gifPath = "/storage/emulated/0/DCIM/Camera/export.gif"
+                FileUtils.deleteFile(gifPath)
+                TraceUtils.endSection()
+
+                TraceUtils.beginSection("exportGif")
+                val start = System.currentTimeMillis()
+                Log.i(TAG, "exportGif start: $gifPath")
+                FFMpegUtils.exportGif(mVideoPath, gifPath)
+                val consume = System.currentTimeMillis() - start
+                Log.i(TAG, "exportGif end, consume: ${consume}ms")
+                TraceUtils.endSection()
+
+                runOnUiThread {
+                    mIsExporting = false
+                    Toast.makeText(this, "export gif consume: ${consume}ms", Toast.LENGTH_SHORT).show()
+                }
             }
         }
     }

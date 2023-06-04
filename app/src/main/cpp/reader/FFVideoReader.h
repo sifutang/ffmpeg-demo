@@ -2,6 +2,7 @@
 #define FFMPEGDEMO_FFVIDEOREADER_H
 
 #include "FFReader.h"
+#include <functional>
 
 class FFVideoReader: public FFReader {
 
@@ -17,6 +18,8 @@ public:
 
     void getFrame(int64_t pts, int width, int height, uint8_t *buffer, bool precise = true);
 
+    void getNextFrame(std::function<void(AVFrame *)> frameArrivedCallback);
+
 private:
     bool mInit = false;
 
@@ -26,6 +29,8 @@ private:
 
     uint8_t *mScaleBuffer = nullptr;
     int64_t mScaleBufferSize = -1;
+
+    AVFrame *mAvFrame = nullptr;
 };
 
 

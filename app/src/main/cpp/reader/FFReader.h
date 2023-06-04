@@ -15,6 +15,12 @@ enum TrackType {
     Track_Audio
 };
 
+enum DiscardType {
+    DISCARD_NONE,   // discard nothing
+    DISCARD_NONREF, // discard all non reference
+    DISCARD_NONKEY  // discard all frames except keyframes
+};
+
 typedef struct MediaInfo {
     // video
     int width = -1;
@@ -62,9 +68,11 @@ public:
 
     void flush();
 
-    void enableSkipNonRefFrame(bool enable);
+    void setDiscardType(DiscardType type);
 
     AVCodecContext *getCodecContext();
+
+    AVCodecParameters *getCodecParameters();
 
     MediaInfo getMediaInfo();
 
@@ -83,7 +91,7 @@ private:
     int mCurStreamIndex = -1;
     TrackType mCurTrackType = Track_Video;
 
-    bool mSkipNonRefFrame = false;
+    DiscardType mDiscardType = DISCARD_NONE;
 
     int prepare();
 };

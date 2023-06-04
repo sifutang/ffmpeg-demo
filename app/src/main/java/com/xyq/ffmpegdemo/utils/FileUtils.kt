@@ -16,6 +16,13 @@ object FileUtils {
 
     private const val TAG = "FileUtils"
 
+    fun deleteFile(path: String) {
+        val file = File(path)
+        if (file.exists()) {
+            file.delete()
+        }
+    }
+
     fun copyFile2Path(inputStream: InputStream, path: String) {
         val file = File(path)
         if (!file.exists() || file.length().toInt() == 0) {

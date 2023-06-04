@@ -94,11 +94,16 @@ add_library( # Sets the name of the library.
         ./reader/FFReader.cpp
         ./reader/FFVideoReader.cpp
 
+        ./writer/FFVideoWriter.cpp
+
+        ./settings/CompileSettings.h
+
         filter/FFFilter.cpp
 
         utils/Logger.h
         utils/ImageDef.h
         utils/CommonUtils.h
+        utils/FFConverter.h
         utils/FFMpegUtils.cpp
         utils/MutexObj.cpp
         utils/TraceUtils.cpp

@@ -32,6 +32,13 @@ object FFMpegUtils {
         getVideoFramesCore(path, width, height, precise, cb)
     }
 
+    /**
+     * 将输入视频的关键帧导出为gif
+     */
+    fun exportGif(videoPath: String, output: String): Boolean {
+        return nativeExportGif(videoPath, output)
+    }
+
     private external fun getVideoFramesCore(path: String,
                                             width: Int,
                                             height: Int,
@@ -41,5 +48,7 @@ object FFMpegUtils {
     private fun allocateFrame(width: Int, height: Int): ByteBuffer {
         return ByteBuffer.allocateDirect(width * height * 4).order(ByteOrder.LITTLE_ENDIAN)
     }
+
+    private external fun nativeExportGif(videoPath: String, output: String): Boolean
 
 }
