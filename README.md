@@ -37,3 +37,5 @@
 [Android FFmpeg系列10--seek优化](https://mp.weixin.qq.com/s/XVN39t_vHn8gaG_ATwaDGA)
 
 [Android FFmpeg系列11--解码遇到EAGAIN的正确处理姿势](https://mp.weixin.qq.com/s/c7VZ53M9t7rSLoWB5WVIVA)
+
+[Android FFmpeg系列12--导出GIF](https://mp.weixin.qq.com/s/AiTrnUOALXPHvptvMBy0Ag)
