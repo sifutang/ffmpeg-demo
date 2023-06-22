@@ -2,7 +2,7 @@
 
 基于FFMpeg5.0.1版本的学习型Demo
 
-![cover](./ffmpeg-demo-cover.jpeg)
+![cover](./ffmpeg-demo-cover.png)
 
 文章原创首发于微信公众号“雪月清的随笔”，欢迎关注
 
