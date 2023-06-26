@@ -11,7 +11,7 @@ class NV12Drawer(context: Context): BaseDrawer(context) {
     private var mUVTextureHandler = -1
 
     override fun getVertexShader(): Int {
-        return R.raw.vertex_camera
+        return R.raw.vertex_normal
     }
 
     override fun getFragmentShader(): Int {

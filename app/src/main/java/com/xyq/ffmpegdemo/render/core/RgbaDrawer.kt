@@ -10,7 +10,7 @@ open class RgbaDrawer(context: Context): BaseDrawer(context) {
     private var mRgbaTextureHandler = -1
 
     override fun getVertexShader(): Int {
-        return R.raw.vertex_camera
+        return R.raw.vertex_normal
     }
 
     override fun getFragmentShader(): Int {

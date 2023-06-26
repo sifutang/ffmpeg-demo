@@ -8,7 +8,7 @@ import android.util.Log
 import com.xyq.ffmpegdemo.R
 import com.xyq.ffmpegdemo.render.model.RenderData
 
-class CameraDrawer(context: Context): BaseDrawer(context) {
+class OesDrawer(context: Context): BaseDrawer(context) {
 
     companion object {
         private const val TAG = "CameraDrawer"
@@ -19,11 +19,11 @@ class CameraDrawer(context: Context): BaseDrawer(context) {
     private var mSurfaceTexture: SurfaceTexture? = null
 
     override fun getVertexShader(): Int {
-        return R.raw.vertex_camera
+        return R.raw.vertex_normal
     }
 
     override fun getFragmentShader(): Int {
-        return R.raw.fragment_camera
+        return R.raw.fragment_oes
     }
 
     override fun getTextureSize(): Int {

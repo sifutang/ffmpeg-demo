@@ -2,7 +2,6 @@ package com.xyq.ffmpegdemo.render
 
 import android.content.Context
 import android.graphics.Bitmap
-import android.util.Log
 import com.xyq.ffmpegdemo.render.core.*
 import com.xyq.ffmpegdemo.render.filter.GreyFilter
 import com.xyq.ffmpegdemo.render.model.RenderData
@@ -76,7 +75,7 @@ class RenderManager(private val mContext: Context) {
                 RgbaDrawer(context)
             }
             RenderFormat.OES -> {
-                CameraDrawer(context)
+                OesDrawer(context)
             }
         }
         drawer.init(true)

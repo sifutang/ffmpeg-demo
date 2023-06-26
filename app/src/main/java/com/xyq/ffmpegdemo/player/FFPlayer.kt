@@ -11,7 +11,7 @@ import android.opengl.GLSurfaceView
 import android.util.Log
 import android.view.Surface
 import com.xyq.ffmpegdemo.render.*
-import com.xyq.ffmpegdemo.render.core.CameraDrawer
+import com.xyq.ffmpegdemo.render.core.OesDrawer
 import com.xyq.ffmpegdemo.render.model.RenderData
 import com.xyq.ffmpegdemo.utils.CommonUtils
 import java.nio.ByteBuffer
@@ -112,7 +112,7 @@ class FFPlayer(private val mContext: Context, private val mGlSurfaceView: GLSurf
             mRenderManager.makeCurrent(RenderManager.RenderFormat.OES)
             mGlSurfaceView.requestRender()
 
-            val st = (drawer as CameraDrawer).getSurfaceTexture()
+            val st = (drawer as OesDrawer).getSurfaceTexture()
             st.setOnFrameAvailableListener {
                 Log.d(TAG, "setOnFrameAvailableListener")
                 mGlSurfaceView.requestRender()
