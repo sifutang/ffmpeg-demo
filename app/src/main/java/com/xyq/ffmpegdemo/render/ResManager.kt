@@ -1,7 +1,7 @@
 package com.xyq.ffmpegdemo.render
 
 import android.content.Context
-import com.xyq.ffmpegdemo.utils.FileUtils
+import com.xyq.libutils.FileUtils
 
 object ResManager {
 

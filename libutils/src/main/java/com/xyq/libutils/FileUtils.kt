@@ -1,4 +1,4 @@
-package com.xyq.ffmpegdemo.utils
+package com.xyq.libutils
 
 import android.content.ContentUris
 import android.content.Context

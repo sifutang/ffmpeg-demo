@@ -1,12 +1,11 @@
-package com.xyq.ffmpegdemo.utils
+package com.xyq.libutils
 
 import android.os.Build
 import android.os.Trace
-import com.xyq.ffmpegdemo.BuildConfig
 
 object TraceUtils {
 
-    private val DEBUG = BuildConfig.DEBUG
+    private val DEBUG = true
 
     fun beginSection(sectionName: String) {
         if (DEBUG) {

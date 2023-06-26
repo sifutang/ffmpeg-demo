@@ -1,4 +1,4 @@
-package com.xyq.ffmpegdemo.utils
+package com.xyq.libutils
 
 import android.content.Context
 import android.graphics.*

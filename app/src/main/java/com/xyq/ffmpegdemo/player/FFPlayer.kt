@@ -13,7 +13,7 @@ import android.view.Surface
 import com.xyq.ffmpegdemo.render.*
 import com.xyq.ffmpegdemo.render.core.OesDrawer
 import com.xyq.ffmpegdemo.render.model.RenderData
-import com.xyq.ffmpegdemo.utils.CommonUtils
+import com.xyq.libutils.CommonUtils
 import java.nio.ByteBuffer
 import java.util.*
 import javax.microedition.khronos.egl.EGLConfig
@@ -272,7 +272,7 @@ class FFPlayer(private val mContext: Context, private val mGlSurfaceView: GLSurf
     }
 
     private fun enableAudioVisualizer(enable: Boolean) {
-        mVisualizer?.enabled = true
+        mVisualizer?.enabled = enable
     }
 
     private fun onNative_videoTrackPrepared(width: Int, height: Int) {

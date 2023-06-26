@@ -22,10 +22,10 @@ import com.xyq.ffmpegdemo.model.VideoThumbnailViewModel
 import com.xyq.ffmpegdemo.player.FFPlayer
 import com.xyq.ffmpegdemo.player.IMediaPlayer
 import com.xyq.ffmpegdemo.player.IMediaPlayerStatusListener
-import com.xyq.ffmpegdemo.utils.CommonUtils
+import com.xyq.libutils.CommonUtils
 import com.xyq.ffmpegdemo.utils.FFMpegUtils
-import com.xyq.ffmpegdemo.utils.FileUtils
-import com.xyq.ffmpegdemo.utils.TraceUtils
+import com.xyq.libutils.FileUtils
+import com.xyq.libutils.TraceUtils
 import java.util.concurrent.Executors
 
 class MainActivity : AppCompatActivity() {

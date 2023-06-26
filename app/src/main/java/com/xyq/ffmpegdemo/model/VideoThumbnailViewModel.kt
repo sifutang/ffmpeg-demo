@@ -4,7 +4,7 @@ import android.util.Log
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import com.xyq.ffmpegdemo.utils.FFMpegUtils
-import com.xyq.ffmpegdemo.utils.TraceUtils
+import com.xyq.libutils.TraceUtils
 import java.nio.ByteBuffer
 
 class VideoThumbnailViewModel: ViewModel() {
