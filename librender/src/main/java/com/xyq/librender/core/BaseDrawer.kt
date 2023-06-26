@@ -45,8 +45,8 @@ abstract class BaseDrawer(private val mContext: Context) : IDrawer {
 
     private var mRotate = 0
 
-    private var mWorldWidth = -1
-    private var mWorldHeight = -1
+    private var mCanvasWidth = -1
+    private var mCanvasHeight = -1
 
     private var mVideoWidth = -1
     private var mVideoHeight = -1
@@ -98,10 +98,10 @@ abstract class BaseDrawer(private val mContext: Context) : IDrawer {
         return Size(mVideoWidth, mVideoHeight)
     }
 
-    override fun setWorldSize(w: Int, h: Int) {
-        if (mWorldWidth != w || mWorldHeight != h) {
-            mWorldWidth = w
-            mWorldHeight = h
+    override fun setCanvasSize(w: Int, h: Int) {
+        if (mCanvasWidth != w || mCanvasHeight != h) {
+            mCanvasWidth = w
+            mCanvasHeight = h
             mNeedResetMatrix = true
             Log.i(TAG, "setWorldSize: $w x $h")
         }
@@ -171,13 +171,13 @@ abstract class BaseDrawer(private val mContext: Context) : IDrawer {
 
     override fun draw() {
         pendingTaskRun()
-        GLES20.glViewport(0, 0, mWorldWidth ,mWorldHeight)
+        GLES20.glViewport(0, 0, mCanvasWidth ,mCanvasHeight)
         drawCore(mTextures, true, mMatrix)
     }
 
     override fun draw(input: Int) {
         pendingTaskRun()
-        GLES20.glViewport(0, 0, mWorldWidth ,mWorldHeight)
+        GLES20.glViewport(0, 0, mCanvasWidth ,mCanvasHeight)
         val textures = IntArray(1)
         textures[0] = input
         drawCore(textures, false, mMatrix)
@@ -241,14 +241,14 @@ abstract class BaseDrawer(private val mContext: Context) : IDrawer {
         }
         mNeedResetMatrix = false
         // update normal matrix
-        if (mVideoWidth != -1 && mVideoHeight != -1 && mWorldWidth != -1 && mWorldHeight != -1) {
+        if (mVideoWidth != -1 && mVideoHeight != -1 && mCanvasWidth != -1 && mCanvasHeight != -1) {
             Log.i(TAG, "initDefMatrix: rotate: $mRotate")
 
-            var worldWidth = mWorldWidth
-            var worldHeight = mWorldHeight
+            var worldWidth = mCanvasWidth
+            var worldHeight = mCanvasHeight
             if (mRotate == 90 || mRotate == 270) {
-                worldWidth = mWorldHeight
-                worldHeight = mWorldWidth
+                worldWidth = mCanvasHeight
+                worldHeight = mCanvasWidth
             }
 
             mMatrix = FloatArray(16)

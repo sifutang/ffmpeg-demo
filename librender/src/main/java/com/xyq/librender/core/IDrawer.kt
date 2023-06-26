@@ -36,7 +36,7 @@ interface IDrawer {
 
     fun getVideoSize(): Size
 
-    fun setWorldSize(w: Int, h: Int)
+    fun setCanvasSize(w: Int, h: Int)
 
     fun setRotate(rotate: Int)
 }

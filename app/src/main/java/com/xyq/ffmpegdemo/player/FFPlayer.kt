@@ -79,7 +79,7 @@ class FFPlayer(private val mContext: Context, private val mGlSurfaceView: GLSurf
 
     override fun onSurfaceChanged(gl: GL10?, width: Int, height: Int) {
         Log.i(TAG, "onSurfaceChanged: $width, $height")
-        mRenderManager.setSurfaceSize(width, height)
+        mRenderManager.setCanvasSize(width, height)
     }
 
     override fun onDrawFrame(gl: GL10?) {

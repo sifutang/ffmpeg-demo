@@ -27,8 +27,8 @@ class RenderManager(private val mContext: Context) {
 
     private val mRenderCache = HashMap<RenderFormat, IDrawer>()
 
-    private var mSurfaceWidth = -1
-    private var mSurfaceHeight = -1
+    private var mCanvasWidth = -1
+    private var mCanvasHeight = -1
 
     private var mVideoWidth = -1
     private var mVideoHeight = -1
@@ -141,9 +141,9 @@ class RenderManager(private val mContext: Context) {
         mVideoHeight = height
     }
 
-    fun setSurfaceSize(width: Int, height: Int) {
-        mSurfaceWidth = width
-        mSurfaceHeight = height
+    fun setCanvasSize(width: Int, height: Int) {
+        mCanvasWidth = width
+        mCanvasHeight = height
     }
 
     fun setGreyFilterProgress(value: Float) {
@@ -168,7 +168,7 @@ class RenderManager(private val mContext: Context) {
         }
         mVideoDrawer!!.setRotate(rotate) // 视频旋转处理
         mVideoDrawer!!.setVideoSize(videoWidth, videoHeight)
-        mVideoDrawer!!.setWorldSize(mSurfaceWidth, mSurfaceHeight)
+        mVideoDrawer!!.setCanvasSize(mCanvasWidth, mCanvasHeight)
 
         // draw video
         val videoOutputId = mVideoDrawer!!.drawToFbo()
@@ -179,14 +179,14 @@ class RenderManager(private val mContext: Context) {
             mGreyFilter!!.init(false)
         }
         mGreyFilter!!.setVideoSize(videoWidth, videoHeight)
-        mGreyFilter!!.setWorldSize(mSurfaceWidth, mSurfaceHeight)
+        mGreyFilter!!.setCanvasSize(mCanvasWidth, mCanvasHeight)
         mGreyFilter!!.setProgress(mGreyIdentity)
         val greyOutputId = mGreyFilter!!.drawToFbo(videoOutputId)
 
         // draw to screen
         mDisplayDrawer?.setRotate(0)
         mDisplayDrawer?.setVideoSize(videoWidth, videoHeight)
-        mDisplayDrawer?.setWorldSize(mSurfaceWidth, mSurfaceHeight)
+        mDisplayDrawer?.setCanvasSize(mCanvasWidth, mCanvasHeight)
         mDisplayDrawer?.draw(greyOutputId)
     }
 
