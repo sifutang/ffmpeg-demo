@@ -1,12 +1,12 @@
-package com.xyq.ffmpegdemo.render.core
+package com.xyq.librender.core
 
 import android.content.Context
 import android.graphics.SurfaceTexture
 import android.opengl.GLES11Ext
 import android.opengl.GLES20
 import android.util.Log
-import com.xyq.ffmpegdemo.R
-import com.xyq.ffmpegdemo.render.model.RenderData
+import com.xyq.librender.R
+import com.xyq.librender.model.RenderData
 
 class OesDrawer(context: Context): BaseDrawer(context) {
 

@@ -1,15 +1,15 @@
-package com.xyq.ffmpegdemo.render.core
+package com.xyq.librender.core
 
 import android.content.Context
 import android.opengl.GLES20
 import android.opengl.Matrix
 import android.util.Log
 import android.util.Size
-import com.xyq.ffmpegdemo.render.model.RenderData
-import com.xyq.ffmpegdemo.render.ResManager
-import com.xyq.ffmpegdemo.render.model.FboDesc
-import com.xyq.ffmpegdemo.render.utils.OpenGLTools
-import com.xyq.ffmpegdemo.render.utils.ShaderHelper
+import com.xyq.librender.model.RenderData
+import com.xyq.librender.ResManager
+import com.xyq.librender.model.FboDesc
+import com.xyq.librender.utils.OpenGLTools
+import com.xyq.librender.utils.ShaderHelper
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.nio.FloatBuffer

@@ -10,9 +10,8 @@ import android.media.audiofx.Visualizer
 import android.opengl.GLSurfaceView
 import android.util.Log
 import android.view.Surface
-import com.xyq.ffmpegdemo.render.*
-import com.xyq.ffmpegdemo.render.core.OesDrawer
-import com.xyq.ffmpegdemo.render.model.RenderData
+import com.xyq.librender.core.OesDrawer
+import com.xyq.librender.model.RenderData
 import com.xyq.libutils.CommonUtils
 import java.nio.ByteBuffer
 import java.util.*
@@ -44,7 +43,7 @@ class FFPlayer(private val mContext: Context, private val mGlSurfaceView: GLSurf
     private var mVisualizer: Visualizer? = null
 
     private val mUseHWDecoder = true
-    private val mRenderManager = RenderManager(mContext)
+    private val mRenderManager = com.xyq.librender.RenderManager(mContext)
     private var mWaterMarkBitmap: Bitmap? = null
 
     private var mSurface: Surface? = null
@@ -108,8 +107,8 @@ class FFPlayer(private val mContext: Context, private val mGlSurfaceView: GLSurf
                 mSurface = null
             }
 
-            val drawer = mRenderManager.take(RenderManager.RenderFormat.OES, mContext)
-            mRenderManager.makeCurrent(RenderManager.RenderFormat.OES)
+            val drawer = mRenderManager.take(com.xyq.librender.RenderManager.RenderFormat.OES, mContext)
+            mRenderManager.makeCurrent(com.xyq.librender.RenderManager.RenderFormat.OES)
             mGlSurfaceView.requestRender()
 
             val st = (drawer as OesDrawer).getSurfaceTexture()

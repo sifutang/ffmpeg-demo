@@ -15,3 +15,4 @@ dependencyResolutionManagement {
 rootProject.name = "FFMpegDemo"
 include ':app'
 include ':libutils'
+include ':librender'

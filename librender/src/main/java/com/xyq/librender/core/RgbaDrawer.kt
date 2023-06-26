@@ -1,9 +1,9 @@
-package com.xyq.ffmpegdemo.render.core
+package com.xyq.librender.core
 
 import android.content.Context
 import android.opengl.GLES20
-import com.xyq.ffmpegdemo.R
-import com.xyq.ffmpegdemo.render.model.RenderData
+import com.xyq.librender.R
+import com.xyq.librender.model.RenderData
 
 open class RgbaDrawer(context: Context): BaseDrawer(context) {
 

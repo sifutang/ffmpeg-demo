@@ -1,11 +1,11 @@
-package com.xyq.ffmpegdemo.render.filter
+package com.xyq.librender.filter
 
 import android.content.Context
 import android.opengl.GLES20
 import android.util.Log
-import com.xyq.ffmpegdemo.R
-import com.xyq.ffmpegdemo.render.core.RgbaDrawer
-import com.xyq.ffmpegdemo.render.model.RenderData
+import com.xyq.librender.R
+import com.xyq.librender.core.RgbaDrawer
+import com.xyq.librender.model.RenderData
 
 class GreyFilter(context: Context): RgbaDrawer(context) {
 

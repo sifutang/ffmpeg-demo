@@ -1,4 +1,4 @@
-package com.xyq.ffmpegdemo.render
+package com.xyq.librender
 
 import android.content.Context
 import com.xyq.libutils.FileUtils

@@ -1,4 +1,4 @@
-package com.xyq.ffmpegdemo.render.utils
+package com.xyq.librender.utils
 
 import android.content.Context
 import android.graphics.Bitmap

@@ -1,4 +1,4 @@
-package com.xyq.ffmpegdemo.render.utils
+package com.xyq.librender.utils
 
 import android.opengl.GLES20
 import android.util.Log

@@ -1,4 +1,4 @@
-package com.xyq.ffmpegdemo.render.model
+package com.xyq.librender.model
 
 import java.nio.ByteBuffer
 

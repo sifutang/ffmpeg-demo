@@ -1,12 +1,16 @@
-package com.xyq.ffmpegdemo.render
+package com.xyq.librender
 
 import android.content.Context
 import android.graphics.Bitmap
-import com.xyq.ffmpegdemo.render.core.*
-import com.xyq.ffmpegdemo.render.filter.GreyFilter
-import com.xyq.ffmpegdemo.render.model.RenderData
-import com.xyq.ffmpegdemo.render.utils.OpenGLTools
-import com.xyq.ffmpegdemo.render.utils.TextureHelper
+import com.xyq.librender.filter.GreyFilter
+import com.xyq.librender.model.RenderData
+import com.xyq.librender.utils.OpenGLTools
+import com.xyq.librender.utils.TextureHelper
+import com.xyq.librender.core.IDrawer
+import com.xyq.librender.core.NV12Drawer
+import com.xyq.librender.core.OesDrawer
+import com.xyq.librender.core.RgbaDrawer
+import com.xyq.librender.core.YuvDrawer
 
 class RenderManager(private val mContext: Context) {
 

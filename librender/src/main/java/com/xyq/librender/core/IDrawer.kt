@@ -1,7 +1,7 @@
-package com.xyq.ffmpegdemo.render.core
+package com.xyq.librender.core
 
 import android.util.Size
-import com.xyq.ffmpegdemo.render.model.RenderData
+import com.xyq.librender.model.RenderData
 
 interface IDrawer {
 

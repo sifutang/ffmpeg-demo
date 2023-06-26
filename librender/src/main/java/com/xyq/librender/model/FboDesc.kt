@@ -1,8 +1,8 @@
-package com.xyq.ffmpegdemo.render.model
+package com.xyq.librender.model
 
 import android.opengl.GLES20
 import android.opengl.Matrix
-import com.xyq.ffmpegdemo.render.utils.OpenGLTools
+import com.xyq.librender.utils.OpenGLTools
 
 /**
  * RGBA format
