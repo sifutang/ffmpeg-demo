@@ -9,8 +9,8 @@ uniform sampler2D samplerUV;
 void main() {
     float y,u,v;
     y = texture2D(samplerY, vCoordinate).r;
-    u = texture2D(samplerUV, vCoordinate).a - 0.5;
-    v = texture2D(samplerUV, vCoordinate).r - 0.5;
+    u = texture2D(samplerUV, vCoordinate).r - 0.5;
+    v = texture2D(samplerUV, vCoordinate).a - 0.5;
 
     vec3 rgb;
     rgb.r = y + 1.403 * v;

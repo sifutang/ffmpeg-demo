@@ -6,7 +6,7 @@ import android.opengl.Matrix
 import android.util.Log
 import android.util.Size
 import com.xyq.librender.model.RenderData
-import com.xyq.librender.ResManager
+import com.xyq.librender.model.ResManager
 import com.xyq.librender.model.FboDesc
 import com.xyq.librender.utils.OpenGLTools
 import com.xyq.librender.utils.ShaderHelper

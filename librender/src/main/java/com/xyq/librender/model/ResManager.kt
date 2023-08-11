@@ -1,4 +1,4 @@
-package com.xyq.librender
+package com.xyq.librender.model
 
 import android.content.Context
 import com.xyq.libutils.FileUtils
