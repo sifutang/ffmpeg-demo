@@ -1,6 +1,8 @@
 # ffmpeg-demo
 
-基于FFMpeg5.0.1版本的学习型Demo
+基于FFMpeg5.0.1版本的学习型Demo，实现了通过FFMpeg提供的硬解和软解两种方式进行音视频文件的渲染和播放
+
+滤镜效果包括：圆角滤镜和灰度滤镜
 
 ![cover](./ffmpeg-demo-cover.png)
 
@@ -39,3 +41,5 @@
 [Android FFmpeg系列11--解码遇到EAGAIN的正确处理姿势](https://mp.weixin.qq.com/s/c7VZ53M9t7rSLoWB5WVIVA)
 
 [Android FFmpeg系列12--导出GIF](https://mp.weixin.qq.com/s/AiTrnUOALXPHvptvMBy0Ag)
+
+[从一个NV12渲染错误的issue说起](https://mp.weixin.qq.com/s/rsZGqKxS-LsPL8M8O537Sw)
