@@ -16,3 +16,6 @@ rootProject.name = "FFMpegDemo"
 include ':app'
 include ':libutils'
 include ':librender'
+include ':libffplayer'
+include ':libbase'
+include ':libhwplayer'

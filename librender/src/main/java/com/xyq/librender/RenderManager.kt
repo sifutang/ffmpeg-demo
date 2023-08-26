@@ -11,6 +11,11 @@ import com.xyq.librender.core.NV12Drawer
 import com.xyq.librender.core.OesDrawer
 import com.xyq.librender.core.RgbaDrawer
 import com.xyq.librender.core.YuvDrawer
+import com.xyq.librender.filter.FilterProcessor
+import com.xyq.librender.filter.IFilter
+import com.xyq.librender.filter.RadiusCornerFilter
+import com.xyq.librender.model.Pipeline
+import com.xyq.libutils.CommonUtils
 
 class RenderManager(private val mContext: Context) {
 
@@ -35,13 +40,14 @@ class RenderManager(private val mContext: Context) {
 
     private var mVideoRotate = 0
 
-    private var mGreyIdentity = 0.0f
-
     private var mVideoDrawer: IDrawer? = null
     private var mDisplayDrawer: IDrawer? = null
-    private var mGreyFilter: GreyFilter? = null
 
     private var mWaterMarkTextureId = -1
+
+    private var mGreyFilter: IFilter? = null
+    private var mRadiusCornerFilter: IFilter? = null
+    private val mFilterProcessor = FilterProcessor()
 
     fun convert(format: Int): RenderFormat {
         return when (format) {
@@ -105,12 +111,20 @@ class RenderManager(private val mContext: Context) {
             mRenderCache[it]?.release()
         }
         mRenderCache.clear()
-
-        mGreyFilter?.release()
+        mFilterProcessor.release()
     }
 
     fun init() {
         mDisplayDrawer = take(RenderFormat.RGBA, mContext)
+
+        mGreyFilter = GreyFilter(mContext)
+        mGreyFilter?.setVal(GreyFilter.VAL_PROGRESS, 0.5f)
+
+        mRadiusCornerFilter = RadiusCornerFilter(mContext)
+        mRadiusCornerFilter?.setVal(RadiusCornerFilter.VAL_RADIUS, 50f)
+
+        mFilterProcessor.addFilter(mGreyFilter!!)
+        mFilterProcessor.addFilter(mRadiusCornerFilter!!) // must be last filter
     }
 
     fun setWaterMark(bitmap: Bitmap) {
@@ -147,18 +161,14 @@ class RenderManager(private val mContext: Context) {
     }
 
     fun setGreyFilterProgress(value: Float) {
-        mGreyIdentity = if (value < 0) {
-            0.0f
-        } else if (value > 1.0f) {
-            1.0f
-        } else {
-            value
-        }
+        val progress = CommonUtils.clamp(0f, 1f, value)
+        mGreyFilter?.setVal(GreyFilter.VAL_PROGRESS, progress)
     }
 
     fun draw() {
         if (mVideoDrawer == null) return
 
+        // step1: draw video
         val rotate = mVideoRotate
         var videoWidth = mVideoWidth
         var videoHeight = mVideoHeight
@@ -169,25 +179,20 @@ class RenderManager(private val mContext: Context) {
         mVideoDrawer!!.setRotate(rotate) // 视频旋转处理
         mVideoDrawer!!.setVideoSize(videoWidth, videoHeight)
         mVideoDrawer!!.setCanvasSize(mCanvasWidth, mCanvasHeight)
-
-        // draw video
         val videoOutputId = mVideoDrawer!!.drawToFbo()
 
-        // draw filter
-        if (mGreyFilter == null) {
-            mGreyFilter = GreyFilter(mContext)
-            mGreyFilter!!.init(false)
+        // step2: draw filter
+        val pipeline = Pipeline(videoOutputId, mCanvasWidth, mCanvasHeight, videoWidth, videoHeight)
+        var texId = mFilterProcessor.process(pipeline)
+        if (texId < 0) {
+            texId = videoOutputId
         }
-        mGreyFilter!!.setVideoSize(videoWidth, videoHeight)
-        mGreyFilter!!.setCanvasSize(mCanvasWidth, mCanvasHeight)
-        mGreyFilter!!.setProgress(mGreyIdentity)
-        val greyOutputId = mGreyFilter!!.drawToFbo(videoOutputId)
 
-        // draw to screen
+        // step3: draw to screen
         mDisplayDrawer?.setRotate(0)
         mDisplayDrawer?.setVideoSize(videoWidth, videoHeight)
         mDisplayDrawer?.setCanvasSize(mCanvasWidth, mCanvasHeight)
-        mDisplayDrawer?.draw(greyOutputId)
+        mDisplayDrawer?.draw(texId)
     }
 
 }

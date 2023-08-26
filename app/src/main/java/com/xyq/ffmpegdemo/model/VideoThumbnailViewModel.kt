@@ -3,7 +3,7 @@ package com.xyq.ffmpegdemo.model
 import android.util.Log
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
-import com.xyq.ffmpegdemo.utils.FFMpegUtils
+import com.xyq.libffplayer.utils.FFMpegUtils
 import com.xyq.libutils.TraceUtils
 import java.nio.ByteBuffer
 

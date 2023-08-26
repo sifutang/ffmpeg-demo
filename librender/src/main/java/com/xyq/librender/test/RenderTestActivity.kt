@@ -24,35 +24,21 @@ class RenderTestActivity : AppCompatActivity(), GLSurfaceView.Renderer {
 
     private lateinit var mGLSurfaceView: GLSurfaceView
     private lateinit var mRenderManager: RenderManager
+    private var mRenderFormat = RenderManager.RenderFormat.NV12
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_render_test)
+        Log.i(TAG, "onCreate: ")
 
         mGLSurfaceView = findViewById(R.id.gl_surface_view)
         mGLSurfaceView.setEGLContextClientVersion(2)
         mGLSurfaceView.setRenderer(this)
+        mGLSurfaceView.renderMode = GLSurfaceView.RENDERMODE_WHEN_DIRTY
 
         mRenderManager = RenderManager(applicationContext)
-        mRenderManager.makeCurrent(RenderManager.RenderFormat.NV12)
-
         mRenderManager.setVideoSize(TEST_YUV_FILE_WIDTH, TEST_YUV_FILE_HEIGHT)
-        mRenderManager.pushVideoData(RenderManager.RenderFormat.NV12, prepareNV12Data())
-    }
-
-    private fun prepareNV12Data(): RenderData {
-        val buffer = FileUtils.read("yuv_test_nv12.yuv", this)
-        val yBuffer = ByteBuffer.allocateDirect(TEST_YUV_FILE_WIDTH * TEST_YUV_FILE_HEIGHT)
-            .order(ByteOrder.nativeOrder())
-        yBuffer.put(buffer, 0, TEST_YUV_FILE_WIDTH * TEST_YUV_FILE_HEIGHT)
-        yBuffer.position(0)
-
-        val uvBuffer = ByteBuffer.allocateDirect(TEST_YUV_FILE_WIDTH * TEST_YUV_FILE_HEIGHT / 2)
-            .order(ByteOrder.nativeOrder())
-        uvBuffer.put(buffer, TEST_YUV_FILE_WIDTH * TEST_YUV_FILE_HEIGHT, TEST_YUV_FILE_WIDTH * TEST_YUV_FILE_HEIGHT / 2)
-        uvBuffer.position(0)
-
-        return RenderData(TEST_YUV_FILE_WIDTH, TEST_YUV_FILE_HEIGHT, yBuffer, uvBuffer, null)
+        mRenderManager.setGreyFilterProgress(0.5f)
     }
 
     override fun onDestroy() {
@@ -75,5 +61,39 @@ class RenderTestActivity : AppCompatActivity(), GLSurfaceView.Renderer {
 
     override fun onDrawFrame(gl: GL10?) {
         mRenderManager.draw()
+    }
+
+    fun setRenderFormat(format: RenderManager.RenderFormat) {
+        mRenderFormat = format
+        Log.i(TAG, "setRenderFormat: $format")
+    }
+
+    fun draw() {
+        mRenderManager.pushVideoData(mRenderFormat, prepareData(mRenderFormat))
+        mGLSurfaceView.requestRender()
+        Log.i(TAG, "draw: ")
+    }
+
+    private fun prepareData(format: RenderManager.RenderFormat): RenderData {
+        var file = ""
+        if (format == RenderManager.RenderFormat.NV12) {
+            file = "yuv_test_nv12.yuv"
+        }
+        if (file.isEmpty()) {
+            return RenderData(TEST_YUV_FILE_WIDTH, TEST_YUV_FILE_HEIGHT, null, null, null)
+        }
+
+        val buffer = FileUtils.read(file, this)
+        val yBuffer = ByteBuffer.allocateDirect(TEST_YUV_FILE_WIDTH * TEST_YUV_FILE_HEIGHT)
+            .order(ByteOrder.nativeOrder())
+        yBuffer.put(buffer, 0, TEST_YUV_FILE_WIDTH * TEST_YUV_FILE_HEIGHT)
+        yBuffer.position(0)
+
+        val uvBuffer = ByteBuffer.allocateDirect(TEST_YUV_FILE_WIDTH * TEST_YUV_FILE_HEIGHT / 2)
+            .order(ByteOrder.nativeOrder())
+        uvBuffer.put(buffer, TEST_YUV_FILE_WIDTH * TEST_YUV_FILE_HEIGHT, TEST_YUV_FILE_WIDTH * TEST_YUV_FILE_HEIGHT / 2)
+        uvBuffer.position(0)
+
+        return RenderData(TEST_YUV_FILE_WIDTH, TEST_YUV_FILE_HEIGHT, yBuffer, uvBuffer, null)
     }
 }

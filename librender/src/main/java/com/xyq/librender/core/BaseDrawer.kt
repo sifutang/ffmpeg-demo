@@ -48,8 +48,11 @@ abstract class BaseDrawer(private val mContext: Context) : IDrawer {
     private var mCanvasWidth = -1
     private var mCanvasHeight = -1
 
-    private var mVideoWidth = -1
-    private var mVideoHeight = -1
+    protected var mVideoWidth = -1
+    protected var mVideoHeight = -1
+    protected var mBackgroundColor = floatArrayOf(
+        23f / 255, 23f / 255, 23f / 255, 1f
+    )
 
     private var mNeedResetMatrix = false
 
@@ -136,7 +139,12 @@ abstract class BaseDrawer(private val mContext: Context) : IDrawer {
         return GLES20.GL_TEXTURE_2D
     }
 
+    fun hasInit(): Boolean {
+        return mInit
+    }
+
     override fun init(async: Boolean) {
+        if (mInit) return
         Log.i(TAG, "init async: $async")
         mInitRunnable = Runnable {
             val vertexShader = ResManager.ShaderCache.findVertexShader(getVertexShader(), mContext)
@@ -298,7 +306,7 @@ abstract class BaseDrawer(private val mContext: Context) : IDrawer {
             return
         }
 
-        GLES20.glClearColor(23f / 255, 23f / 255, 23f / 255, 0f)
+        GLES20.glClearColor(mBackgroundColor[0], mBackgroundColor[1], mBackgroundColor[2], mBackgroundColor[3])
         GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT or GLES20.GL_DEPTH_BUFFER_BIT)
 
         GLES20.glUseProgram(mProgram)

@@ -1,6 +1,5 @@
 package com.xyq.librender
 
-import androidx.lifecycle.Lifecycle
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -25,11 +24,15 @@ class ExampleInstrumentedTest {
     }
 
     @Test
-    fun useRenderTestActivity() {
+    fun useRenderTestActivity_NV12() {
         val scenario: ActivityScenario<RenderTestActivity> = ActivityScenario.launch(
             RenderTestActivity::class.java
         )
-        Thread.sleep(10 * 1000)
+        scenario.onActivity {
+            it.setRenderFormat(RenderManager.RenderFormat.NV12)
+            it.draw()
+        }
+        Thread.sleep(60 * 1000)
         scenario.close()
     }
 }

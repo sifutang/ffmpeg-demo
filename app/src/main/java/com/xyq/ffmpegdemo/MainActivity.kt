@@ -19,11 +19,12 @@ import com.xyq.ffmpegdemo.databinding.ActivityMainBinding
 import com.xyq.ffmpegdemo.model.ButtonItemModel
 import com.xyq.ffmpegdemo.model.ButtonItemViewModel
 import com.xyq.ffmpegdemo.model.VideoThumbnailViewModel
-import com.xyq.ffmpegdemo.player.FFPlayer
+import com.xyq.ffmpegdemo.player.MyPlayer
 import com.xyq.ffmpegdemo.player.IMediaPlayer
 import com.xyq.ffmpegdemo.player.IMediaPlayerStatusListener
+import com.xyq.ffmpegdemo.player.PlayerConfig
 import com.xyq.libutils.CommonUtils
-import com.xyq.ffmpegdemo.utils.FFMpegUtils
+import com.xyq.libffplayer.utils.FFMpegUtils
 import com.xyq.libutils.FileUtils
 import com.xyq.libutils.TraceUtils
 import java.util.concurrent.Executors
@@ -33,9 +34,6 @@ class MainActivity : AppCompatActivity() {
     companion object {
         private const val TAG = "MainActivity"
         private const val VIDEO_THUMBNAIL_SIZE = 5
-        init {
-            System.loadLibrary("ffmpegdemo")
-        }
     }
 
     private lateinit var mBinding: ActivityMainBinding
@@ -70,7 +68,10 @@ class MainActivity : AppCompatActivity() {
 
         mHasPermission = checkPermission()
 
-        mPlayer = FFPlayer(applicationContext, mBinding.glSurfaceView)
+        val config = PlayerConfig().apply {
+            decodeConfig = PlayerConfig.DecodeConfig.USE_FF_HW_DECODER
+        }
+        mPlayer = MyPlayer(applicationContext, mBinding.glSurfaceView, config)
 
         // preload video thumbnail
         mVideoPath = getDemoVideoPath()
@@ -350,7 +351,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
         if (event.action == MotionEvent.ACTION_MOVE) {
-            (mPlayer as FFPlayer).setFilterProgress(event.x / mBinding.glSurfaceView.width)
+            (mPlayer as MyPlayer).setFilterProgress(event.x / mBinding.glSurfaceView.width)
         }
         return super.onTouchEvent(event)
     }

@@ -6,6 +6,16 @@ import kotlin.math.abs
 
 object CommonUtils {
 
+    fun clamp(lower: Float, upper: Float, cur: Float): Float {
+        return if (cur < lower) {
+            0.0f
+        } else if (cur > upper) {
+            1.0f
+        } else {
+            cur
+        }
+    }
+
     fun getTimeDesc(timeS: Int): String {
         val hour = timeS / 3600
         val minute = timeS / 60
