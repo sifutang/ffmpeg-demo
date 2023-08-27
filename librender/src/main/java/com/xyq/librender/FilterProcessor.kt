@@ -1,5 +1,6 @@
-package com.xyq.librender.filter
+package com.xyq.librender
 
+import com.xyq.librender.filter.IFilter
 import com.xyq.librender.model.Pipeline
 
 class FilterProcessor {

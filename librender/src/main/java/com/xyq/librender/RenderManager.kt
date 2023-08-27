@@ -2,7 +2,6 @@ package com.xyq.librender
 
 import android.content.Context
 import android.graphics.Bitmap
-import com.xyq.librender.filter.GreyFilter
 import com.xyq.librender.model.RenderData
 import com.xyq.librender.utils.OpenGLTools
 import com.xyq.librender.utils.TextureHelper
@@ -11,17 +10,10 @@ import com.xyq.librender.core.NV12Drawer
 import com.xyq.librender.core.OesDrawer
 import com.xyq.librender.core.RgbaDrawer
 import com.xyq.librender.core.YuvDrawer
-import com.xyq.librender.filter.FilterProcessor
 import com.xyq.librender.filter.IFilter
-import com.xyq.librender.filter.RadiusCornerFilter
 import com.xyq.librender.model.Pipeline
-import com.xyq.libutils.CommonUtils
 
 class RenderManager(private val mContext: Context) {
-
-    companion object {
-        private const val TAG = "RenderManager"
-    }
 
     enum class RenderFormat {
         YUV420,
@@ -44,9 +36,6 @@ class RenderManager(private val mContext: Context) {
     private var mDisplayDrawer: IDrawer? = null
 
     private var mWaterMarkTextureId = -1
-
-    private var mGreyFilter: IFilter? = null
-    private var mRadiusCornerFilter: IFilter? = null
     private val mFilterProcessor = FilterProcessor()
 
     fun convert(format: Int): RenderFormat {
@@ -116,15 +105,6 @@ class RenderManager(private val mContext: Context) {
 
     fun init() {
         mDisplayDrawer = take(RenderFormat.RGBA, mContext)
-
-        mGreyFilter = GreyFilter(mContext)
-        mGreyFilter?.setVal(GreyFilter.VAL_PROGRESS, 0.5f)
-
-        mRadiusCornerFilter = RadiusCornerFilter(mContext)
-        mRadiusCornerFilter?.setVal(RadiusCornerFilter.VAL_RADIUS, 50f)
-
-        mFilterProcessor.addFilter(mGreyFilter!!)
-        mFilterProcessor.addFilter(mRadiusCornerFilter!!) // must be last filter
     }
 
     fun setWaterMark(bitmap: Bitmap) {
@@ -160,9 +140,12 @@ class RenderManager(private val mContext: Context) {
         mCanvasHeight = height
     }
 
-    fun setGreyFilterProgress(value: Float) {
-        val progress = CommonUtils.clamp(0f, 1f, value)
-        mGreyFilter?.setVal(GreyFilter.VAL_PROGRESS, progress)
+    fun addFilter(filter: IFilter) {
+        mFilterProcessor.addFilter(filter)
+    }
+
+    fun removeFilter(filter: IFilter) {
+        mFilterProcessor.removeFilter(filter)
     }
 
     fun draw() {

@@ -6,6 +6,8 @@ import android.os.Bundle
 import android.util.Log
 import com.xyq.librender.R
 import com.xyq.librender.RenderManager
+import com.xyq.librender.filter.GreyFilter
+import com.xyq.librender.filter.RadiusCornerFilter
 import com.xyq.librender.model.RenderData
 import com.xyq.libutils.FileUtils
 import java.nio.ByteBuffer
@@ -38,7 +40,11 @@ class RenderTestActivity : AppCompatActivity(), GLSurfaceView.Renderer {
 
         mRenderManager = RenderManager(applicationContext)
         mRenderManager.setVideoSize(TEST_YUV_FILE_WIDTH, TEST_YUV_FILE_HEIGHT)
-        mRenderManager.setGreyFilterProgress(0.5f)
+
+        val radiusCornerFilter = RadiusCornerFilter(applicationContext).apply {
+            setVal(RadiusCornerFilter.VAL_RADIUS, 50f)
+        }
+        mRenderManager.addFilter(radiusCornerFilter)
     }
 
     override fun onDestroy() {

@@ -16,6 +16,9 @@ import com.xyq.libffplayer.FFPlayer
 import com.xyq.libhwplayer.HwPlayer
 import com.xyq.librender.RenderManager
 import com.xyq.librender.core.OesDrawer
+import com.xyq.librender.filter.GreyFilter
+import com.xyq.librender.filter.IFilter
+import com.xyq.librender.filter.RadiusCornerFilter
 import com.xyq.librender.model.RenderData
 import com.xyq.libutils.CommonUtils
 import java.nio.ByteBuffer
@@ -55,6 +58,8 @@ class MyPlayer(private val mContext: Context,
 
     private val mRenderManager = RenderManager(mContext)
     private var mWaterMarkBitmap: Bitmap? = null
+    private var mGreyFilter: IFilter? = null
+    private var mRadiusCornerFilter: IFilter? = null
 
     private var mSurface: Surface? = null
 
@@ -86,6 +91,15 @@ class MyPlayer(private val mContext: Context,
         Log.i(TAG, "onSurfaceCreated: ")
         mRenderManager.init()
         mRenderManager.setWaterMark(mWaterMarkBitmap!!)
+
+        mGreyFilter = GreyFilter(mContext).apply {
+            setVal(GreyFilter.VAL_PROGRESS, 0.5f)
+        }
+        mRadiusCornerFilter = RadiusCornerFilter(mContext).apply {
+            setVal(RadiusCornerFilter.VAL_RADIUS, 50f)
+        }
+        mRenderManager.addFilter(mGreyFilter!!)
+        mRenderManager.addFilter(mRadiusCornerFilter!!) // must be last filter
     }
 
     override fun onSurfaceChanged(gl: GL10?, width: Int, height: Int) {
@@ -99,7 +113,8 @@ class MyPlayer(private val mContext: Context,
     }
 
     fun setFilterProgress(value: Float) {
-        mRenderManager.setGreyFilterProgress(value)
+        val progress = CommonUtils.clamp(0f, 1f, value)
+        mGreyFilter?.setVal(GreyFilter.VAL_PROGRESS, progress)
     }
 
     override fun setListener(listener: IMediaPlayerStatusListener?) {
@@ -138,7 +153,7 @@ class MyPlayer(private val mContext: Context,
         mDuration = getDuration()
         mVideoRotate = mPlayerProxy.getRotate()
         mRenderManager.setVideoRotate(mVideoRotate)
-        mRenderManager.setGreyFilterProgress(0.5f)
+        mGreyFilter?.setVal(GreyFilter.VAL_PROGRESS, 0.5f)
         Log.i(TAG, "prepare: done, duration: $mDuration, rotate: $mVideoRotate")
     }
 
