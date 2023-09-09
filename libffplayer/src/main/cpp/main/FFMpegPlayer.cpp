@@ -526,6 +526,22 @@ void FFMpegPlayer::doRender(JNIEnv *env, AVFrame *avFrame) {
         }
 
         env->DeleteLocalRef(rgba);
+    } else if (avFrame->format == AV_PIX_FMT_RGB24) {
+        if (!avFrame->data[0]) {
+            LOGE("doRender failed, no rgb24 buffer")
+            return;
+        }
+
+        int size = avFrame->width * avFrame->height * 3;
+        auto rgb24 = env->NewByteArray(size);
+        checkStrideAndFill(env, &rgb24, avFrame->width, avFrame->height, avFrame->linesize[0], 3, avFrame->data[0]);
+
+        if (mPlayerJni.isValid()) {
+            env->CallVoidMethod(mPlayerJni.instance, mPlayerJni.onVideoFrameArrived,
+                                avFrame->width, avFrame->height, FMT_VIDEO_RGB, rgb24, nullptr, nullptr);
+        }
+
+        env->DeleteLocalRef(rgb24);
     } else if (avFrame->format == AV_PIX_FMT_MEDIACODEC) {
         av_mediacodec_release_buffer((AVMediaCodecBuffer *)avFrame->data[3], 1);
     } else if (avFrame->format == AV_SAMPLE_FMT_FLTP) {

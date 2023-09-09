@@ -8,6 +8,7 @@ import com.xyq.librender.utils.TextureHelper
 import com.xyq.librender.core.IDrawer
 import com.xyq.librender.core.NV12Drawer
 import com.xyq.librender.core.OesDrawer
+import com.xyq.librender.core.RgbDrawer
 import com.xyq.librender.core.RgbaDrawer
 import com.xyq.librender.core.YuvDrawer
 import com.xyq.librender.filter.IFilter
@@ -18,8 +19,9 @@ class RenderManager(private val mContext: Context) {
     enum class RenderFormat {
         YUV420,
         NV12,
-        RGBA,
-        OES
+        RGBA, // R8G8B8A8
+        OES,
+        RGB, // R8G8B8
     }
 
     private val mRenderCache = HashMap<RenderFormat, IDrawer>()
@@ -52,6 +54,9 @@ class RenderManager(private val mContext: Context) {
             0x03 -> {
                 RenderFormat.OES
             }
+            0x04 -> {
+                RenderFormat.RGB
+            }
             else -> {
                 RenderFormat.RGBA
             }
@@ -75,6 +80,9 @@ class RenderManager(private val mContext: Context) {
             }
             RenderFormat.OES -> {
                 OesDrawer(context)
+            }
+            RenderFormat.RGB -> {
+                RgbDrawer(context)
             }
         }
         drawer.init(true)

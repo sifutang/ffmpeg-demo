@@ -126,8 +126,9 @@ class MyPlayer(private val mContext: Context,
             throw IllegalStateException("must first call setDataSource")
         }
 
-        Log.i(TAG, "prepare: ")
-        if (mConfig.decodeConfig == PlayerConfig.DecodeConfig.USE_FF_HW_DECODER || mConfig.decodeConfig == PlayerConfig.DecodeConfig.USE_HW_DECODER) {
+        val needSurface = mConfig.decodeConfig == PlayerConfig.DecodeConfig.USE_FF_HW_DECODER || mConfig.decodeConfig == PlayerConfig.DecodeConfig.USE_HW_DECODER
+        Log.i(TAG, "prepare: needSurface: $needSurface")
+        if (needSurface) {
             mSurface?.let {
                 it.release()
                 mSurface = null

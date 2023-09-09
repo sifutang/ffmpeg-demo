@@ -5,6 +5,7 @@
 #define FMT_VIDEO_NV12          0x01
 #define FMT_VIDEO_RGBA          0x02
 #define FMT_VIDEO_MEDIACODEC    0x03
+#define FMT_VIDEO_RGB           0x04
 
 #define FMT_AUDIO_PCM           0x00
 

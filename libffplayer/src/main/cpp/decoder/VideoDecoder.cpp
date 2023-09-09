@@ -188,7 +188,7 @@ int VideoDecoder::decode(AVPacket *avPacket) {
         LOGE("[video] avcodec_receive_frame...pts: %" PRId64 ", precision seek consume: %" PRId64, mAvFrame->pts, precisionSeekConsume)
     }
 
-    if (mAvFrame->format == AV_PIX_FMT_YUV420P || mAvFrame->format == AV_PIX_FMT_NV12 || mAvFrame->format == hw_pix_fmt) {
+    if (mAvFrame->format == AV_PIX_FMT_YUV420P || mAvFrame->format == AV_PIX_FMT_NV12 || mAvFrame->format == hw_pix_fmt || mAvFrame->format == AV_PIX_FMT_RGB24) {
         if (mOnFrameArrivedListener) {
             mOnFrameArrivedListener(mAvFrame);
         }
