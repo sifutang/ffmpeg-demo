@@ -2,12 +2,12 @@ package com.xyq.ffmpegdemo
 
 import android.Manifest
 import android.app.ActionBar.LayoutParams
-import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.*
 import android.util.Log
 import android.view.MotionEvent
+import android.view.View
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.SeekBar
@@ -15,16 +15,19 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.res.ResourcesCompat
 import androidx.lifecycle.ViewModelProvider
+import com.dmcbig.mediapicker.PickerActivity
+import com.dmcbig.mediapicker.PickerConfig
+import com.dmcbig.mediapicker.entity.Media
 import com.xyq.ffmpegdemo.databinding.ActivityMainBinding
 import com.xyq.ffmpegdemo.model.ButtonItemModel
 import com.xyq.ffmpegdemo.model.ButtonItemViewModel
 import com.xyq.ffmpegdemo.model.VideoThumbnailViewModel
-import com.xyq.ffmpegdemo.player.MyPlayer
 import com.xyq.ffmpegdemo.player.IMediaPlayer
 import com.xyq.ffmpegdemo.player.IMediaPlayerStatusListener
+import com.xyq.ffmpegdemo.player.MyPlayer
 import com.xyq.ffmpegdemo.player.PlayerConfig
-import com.xyq.libutils.CommonUtils
 import com.xyq.libffplayer.utils.FFMpegUtils
+import com.xyq.libutils.CommonUtils
 import com.xyq.libutils.FileUtils
 import com.xyq.libutils.TraceUtils
 import java.util.concurrent.Executors
@@ -52,6 +55,8 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var mVideoThumbnailViewModel: VideoThumbnailViewModel
     private lateinit var mBtnViewModel: ButtonItemViewModel
+
+    private var mSelectMediaArr: ArrayList<Media>? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -126,6 +131,13 @@ class MainActivity : AppCompatActivity() {
                 mVideoPath = path
             }
             Log.e(TAG, "onActivityResult: url: ${data?.data}, path: $path")
+        } else if (requestCode == 2000 && resultCode == PickerConfig.RESULT_CODE) {
+            mSelectMediaArr = data?.getParcelableArrayListExtra(PickerConfig.EXTRA_RESULT)
+            mSelectMediaArr?.let {
+                if (it.isNotEmpty()) {
+                    mVideoPath = it[0].path
+                }
+            }
         }
         super.onActivityResult(requestCode, resultCode, data)
     }
@@ -208,14 +220,25 @@ class MainActivity : AppCompatActivity() {
         }
 
         mBinding.btnSelectFile.setOnClickListener {
-            val intent = Intent(Intent.ACTION_GET_CONTENT)
-            intent.type = "video/*"
-            intent.addCategory(Intent.CATEGORY_OPENABLE)
-            try {
-                startActivityForResult(Intent.createChooser(intent, "选择播放文件"), 2000)
-            } catch (e: ActivityNotFoundException) {
-                e.printStackTrace()
-            }
+//            val intent = Intent(Intent.ACTION_GET_CONTENT)
+//            intent.type = "video/*"
+//            intent.addCategory(Intent.CATEGORY_OPENABLE)
+//            try {
+//                startActivityForResult(Intent.createChooser(intent, "选择播放文件"), 2000)
+//            } catch (e: ActivityNotFoundException) {
+//                e.printStackTrace()
+//            }
+            val intent = Intent(this, PickerActivity::class.java)
+            intent.putExtra(PickerConfig.SELECT_MODE, PickerConfig.PICKER_VIDEO) //设置选择类型，默认是图片和视频可一起选择(非必填参数)
+
+            val maxSize = 188743680L //long long long long类型
+            intent.putExtra(PickerConfig.MAX_SELECT_SIZE, maxSize) //最大选择大小，默认180M（非必填参数）
+            intent.putExtra(PickerConfig.MAX_SELECT_COUNT, 1) //最大选择数量，默认40（非必填参数）
+
+            val defaultSelect: ArrayList<Media>? = null //mSelectMediaArr //可以设置默认选中的照片，比如把select刚刚选择的list设置成默认的。
+            intent.putExtra(PickerConfig.DEFAULT_SELECTED_LIST, defaultSelect) //可以设置默认选中的照片(非必填参数)
+
+            startActivityForResult(intent, 2000)
         }
 
         mBinding.btnExportGif.setOnClickListener {
@@ -253,8 +276,13 @@ class MainActivity : AppCompatActivity() {
         mVideoThumbnailViewModel = ViewModelProvider(this).get(VideoThumbnailViewModel::class.java)
         mVideoThumbnailViewModel.mLiveData.observe(this) {
             Log.i(TAG, "Receive VideoThumbnailViewModel: $it")
-            if (it.isValid() && it.index < mThumbnailViews.size) {
-                mThumbnailViews[it.index].setImageBitmap(it.getBitmap())
+            if (it.index < mThumbnailViews.size) {
+                if (it.isValid()) {
+                    mThumbnailViews[it.index].visibility = View.VISIBLE
+                    mThumbnailViews[it.index].setImageBitmap(it.getBitmap())
+                } else {
+                    mThumbnailViews[it.index].visibility = View.INVISIBLE
+                }
             }
         }
 

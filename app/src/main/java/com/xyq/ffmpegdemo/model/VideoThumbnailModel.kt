@@ -4,7 +4,7 @@ import android.graphics.Bitmap
 import android.graphics.Matrix
 import java.nio.ByteBuffer
 
-class VideoThumbnailModel(val width: Int, val height: Int, val rotate: Int, val index: Int, val buffer: ByteBuffer?) {
+class VideoThumbnailModel(private val width: Int, private val height: Int, private val rotate: Int, val index: Int, private val buffer: ByteBuffer?) {
 
     private var mBitmap: Bitmap? = null
 
@@ -13,7 +13,7 @@ class VideoThumbnailModel(val width: Int, val height: Int, val rotate: Int, val 
     }
 
     fun getBitmap(): Bitmap? {
-        if (mBitmap == null) {
+        if (mBitmap == null && width > 0 && height > 0) {
             buffer?.let {
                 val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
                 bitmap!!.copyPixelsFromBuffer(it)
