@@ -12,12 +12,11 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.SeekBar
 import android.widget.Toast
+import androidx.activity.result.ActivityResultLauncher
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.res.ResourcesCompat
 import androidx.lifecycle.ViewModelProvider
-import com.dmcbig.mediapicker.PickerActivity
-import com.dmcbig.mediapicker.PickerConfig
-import com.dmcbig.mediapicker.entity.Media
 import com.xyq.ffmpegdemo.databinding.ActivityMainBinding
 import com.xyq.ffmpegdemo.model.ButtonItemModel
 import com.xyq.ffmpegdemo.model.ButtonItemViewModel
@@ -27,6 +26,9 @@ import com.xyq.ffmpegdemo.player.IMediaPlayerStatusListener
 import com.xyq.ffmpegdemo.player.MyPlayer
 import com.xyq.ffmpegdemo.player.PlayerConfig
 import com.xyq.libffplayer.utils.FFMpegUtils
+import com.xyq.libmediapicker.MediaPickerActivity
+import com.xyq.libmediapicker.PickerConfig
+import com.xyq.libmediapicker.entity.Media
 import com.xyq.libutils.CommonUtils
 import com.xyq.libutils.FileUtils
 import com.xyq.libutils.TraceUtils
@@ -56,7 +58,17 @@ class MainActivity : AppCompatActivity() {
     private lateinit var mVideoThumbnailViewModel: VideoThumbnailViewModel
     private lateinit var mBtnViewModel: ButtonItemViewModel
 
-    private var mSelectMediaArr: ArrayList<Media>? = null
+    private var mMediaPickerLauncher: ActivityResultLauncher<Intent> =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            if (result.resultCode == PickerConfig.RESULT_CODE) {
+                val select = result.data?.getParcelableArrayListExtra<Media>(PickerConfig.EXTRA_RESULT)
+                select?.let {
+                    if (it.isNotEmpty()) {
+                        mVideoPath = it[0].path
+                    }
+                }
+            }
+        }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -122,24 +134,6 @@ class MainActivity : AppCompatActivity() {
             mHasPermission = true
             Log.i(TAG, "onRequestPermissionsResult:")
         }
-    }
-
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        if (requestCode == 2000 && resultCode == RESULT_OK) {
-            val path = FileUtils.getImageAbsolutePath(this, data?.data)
-            path?.let {
-                mVideoPath = path
-            }
-            Log.e(TAG, "onActivityResult: url: ${data?.data}, path: $path")
-        } else if (requestCode == 2000 && resultCode == PickerConfig.RESULT_CODE) {
-            mSelectMediaArr = data?.getParcelableArrayListExtra(PickerConfig.EXTRA_RESULT)
-            mSelectMediaArr?.let {
-                if (it.isNotEmpty()) {
-                    mVideoPath = it[0].path
-                }
-            }
-        }
-        super.onActivityResult(requestCode, resultCode, data)
     }
 
     private fun checkPermission(): Boolean {
@@ -220,25 +214,10 @@ class MainActivity : AppCompatActivity() {
         }
 
         mBinding.btnSelectFile.setOnClickListener {
-//            val intent = Intent(Intent.ACTION_GET_CONTENT)
-//            intent.type = "video/*"
-//            intent.addCategory(Intent.CATEGORY_OPENABLE)
-//            try {
-//                startActivityForResult(Intent.createChooser(intent, "选择播放文件"), 2000)
-//            } catch (e: ActivityNotFoundException) {
-//                e.printStackTrace()
-//            }
-            val intent = Intent(this, PickerActivity::class.java)
-            intent.putExtra(PickerConfig.SELECT_MODE, PickerConfig.PICKER_VIDEO) //设置选择类型，默认是图片和视频可一起选择(非必填参数)
-
-            val maxSize = 188743680L //long long long long类型
-            intent.putExtra(PickerConfig.MAX_SELECT_SIZE, maxSize) //最大选择大小，默认180M（非必填参数）
-            intent.putExtra(PickerConfig.MAX_SELECT_COUNT, 1) //最大选择数量，默认40（非必填参数）
-
-            val defaultSelect: ArrayList<Media>? = null //mSelectMediaArr //可以设置默认选中的照片，比如把select刚刚选择的list设置成默认的。
-            intent.putExtra(PickerConfig.DEFAULT_SELECTED_LIST, defaultSelect) //可以设置默认选中的照片(非必填参数)
-
-            startActivityForResult(intent, 2000)
+            val intent = Intent(this, MediaPickerActivity::class.java)
+            intent.putExtra(PickerConfig.SELECT_MODE, PickerConfig.PICKER_VIDEO)
+            intent.putExtra(PickerConfig.MAX_SELECT_COUNT, 1)
+            mMediaPickerLauncher.launch(intent)
         }
 
         mBinding.btnExportGif.setOnClickListener {
@@ -371,7 +350,6 @@ class MainActivity : AppCompatActivity() {
 
     private fun getDemoVideoPath(): String {
         val path = "oceans.mp4"
-//        val path = "av_sync_test.mp4"
         val videoPath = cacheDir.absolutePath + "/$path"
         FileUtils.copyFile2Path(assets.open(path), videoPath)
         return videoPath

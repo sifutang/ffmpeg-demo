@@ -96,7 +96,7 @@ class MyPlayer(private val mContext: Context,
             setVal(GreyFilter.VAL_PROGRESS, 0.5f)
         }
         mRadiusCornerFilter = RadiusCornerFilter(mContext).apply {
-            setVal(RadiusCornerFilter.VAL_RADIUS, 50f)
+            setVal(RadiusCornerFilter.VAL_RADIUS, 30f)
         }
         mRenderManager.addFilter(mGreyFilter!!)
         mRenderManager.addFilter(mRadiusCornerFilter!!) // must be last filter

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="READ_EXTERNAL_STORAGE">需要打开读取外置存储的权限</string>
+    <string name="all_dir_name">视频与图片</string>
+    <string name="all_image">图片</string>
+    <string name="all_video">所有视频</string>
+    <string name="done">完成</string>
+
+    <string name="select_image_title">选择图片</string>
+    <string name="select_title">选择图片或视频</string>
+    <string name="select_video_title">选择视频</string>
+    <string name="video_dir_name">所有视频</string>
+
+    <string name="mime_type_gif">GIF</string>
+</resources>
