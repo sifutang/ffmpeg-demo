@@ -8,8 +8,11 @@ import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.provider.MediaStore
 import android.util.Log
+import android.view.MotionEvent
+import android.view.ScaleGestureDetector
 import android.widget.Button
 import android.widget.Toast
+import androidx.camera.core.Camera
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageCapture
 import androidx.camera.core.ImageCaptureException
@@ -37,6 +40,7 @@ class CameraPreviewActivity : AppCompatActivity() {
     private var imageCapture: ImageCapture? = null
     private var videoCapture: VideoCapture<Recorder>? = null
     private var recording: Recording? = null
+    private var camera: Camera? = null
 
     private lateinit var cameraExecutor: ExecutorService
     private lateinit var viewFinder: PreviewView
@@ -57,25 +61,20 @@ class CameraPreviewActivity : AppCompatActivity() {
             }.toTypedArray()
     }
 
+    private var scaleGestureDetector: ScaleGestureDetector? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.camera_preview)
 
-        viewFinder = findViewById(R.id.viewFinder)
-        viewFinder.scaleType = PreviewView.ScaleType.FIT_CENTER
+        initViews()
+        initGestureDetector()
 
         // Request camera permissions
         if (allPermissionsGranted()) {
             startCamera()
         } else {
-            ActivityCompat.requestPermissions(
-                this, REQUIRED_PERMISSIONS, REQUEST_CODE_PERMISSIONS)
-        }
-
-        // Set up the listeners for take photo and video capture buttons
-        findViewById<Button>(R.id.image_capture_button).setOnClickListener { takePhoto() }
-        videoCaptureButton = findViewById<Button>(R.id.video_capture_button).apply {
-            setOnClickListener { captureVideo() }
+            ActivityCompat.requestPermissions(this, REQUIRED_PERMISSIONS, REQUEST_CODE_PERMISSIONS)
         }
 
         cameraExecutor = Executors.newSingleThreadExecutor()
@@ -91,6 +90,45 @@ class CameraPreviewActivity : AppCompatActivity() {
                 finish()
             }
         }
+    }
+
+    private fun initViews() {
+        viewFinder = findViewById(R.id.viewFinder)
+        viewFinder.scaleType = PreviewView.ScaleType.FIT_CENTER
+        viewFinder.setOnTouchListener { v, event ->
+            if (event?.action == MotionEvent.ACTION_UP) {
+                v?.performClick()
+            }
+            var didConsume = false
+            event?.let {
+                didConsume = scaleGestureDetector!!.onTouchEvent(it)
+                //                    if (!scaleGestureDetector.isInProgress) {
+                // See pinch-to-zooom scenario for gestureDetector definition.
+                //                        didConsume = gestureDetector.onTouchEvent(event)
+                //                    }
+            }
+            didConsume
+        }
+        // Set up the listeners for take photo and video capture buttons
+        findViewById<Button>(R.id.image_capture_button).setOnClickListener { takePhoto() }
+        videoCaptureButton = findViewById<Button>(R.id.video_capture_button).apply {
+            setOnClickListener { captureVideo() }
+        }
+    }
+
+    private fun initGestureDetector() {
+        scaleGestureDetector = ScaleGestureDetector(this, object: ScaleGestureDetector.SimpleOnScaleGestureListener() {
+            override fun onScale(detector: ScaleGestureDetector): Boolean {
+                camera?.let {
+                    val zoomState = it.cameraInfo.zoomState
+                    val currentZoomRatio: Float = zoomState.value?.zoomRatio ?: 1f
+                    it.cameraControl.setZoomRatio(
+                        detector.scaleFactor * currentZoomRatio
+                    )
+                }
+                return true
+            }
+        })
     }
 
     private fun startCamera() {
@@ -124,7 +162,7 @@ class CameraPreviewActivity : AppCompatActivity() {
                 cameraProvider.unbindAll()
 
                 // Bind use cases to camera
-                cameraProvider.bindToLifecycle(this, cameraSelector, preview, imageCapture, videoCapture)
+                camera = cameraProvider.bindToLifecycle(this, cameraSelector, preview, imageCapture, videoCapture)
 
             } catch(exc: Exception) {
                 Log.e(TAG, "Use case binding failed", exc)
