@@ -17,6 +17,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.res.ResourcesCompat
 import androidx.lifecycle.ViewModelProvider
+import com.xyq.camerakit.CameraPreviewActivity
 import com.xyq.ffmpegdemo.databinding.ActivityMainBinding
 import com.xyq.ffmpegdemo.model.ButtonItemModel
 import com.xyq.ffmpegdemo.model.ButtonItemViewModel
@@ -58,7 +59,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var mVideoThumbnailViewModel: VideoThumbnailViewModel
     private lateinit var mBtnViewModel: ButtonItemViewModel
 
-    private var mMediaPickerLauncher: ActivityResultLauncher<Intent> =
+    private var mLauncher: ActivityResultLauncher<Intent> =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
             if (result.resultCode == PickerConfig.RESULT_CODE) {
                 val select = result.data?.getParcelableArrayListExtra<Media>(PickerConfig.EXTRA_RESULT)
@@ -213,11 +214,16 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        mBinding.btnSelectFile.setOnClickListener {
+        mBinding.btnImport.setOnClickListener {
             val intent = Intent(this, MediaPickerActivity::class.java)
             intent.putExtra(PickerConfig.SELECT_MODE, PickerConfig.PICKER_VIDEO)
             intent.putExtra(PickerConfig.MAX_SELECT_COUNT, 1)
-            mMediaPickerLauncher.launch(intent)
+            mLauncher.launch(intent)
+        }
+
+        mBinding.btnCamera.setOnClickListener {
+            val intent = Intent(this, CameraPreviewActivity::class.java)
+            mLauncher.launch(intent)
         }
 
         mBinding.btnExportGif.setOnClickListener {

@@ -13,6 +13,7 @@
             <option value="$PROJECT_DIR$" />
             <option value="$PROJECT_DIR$/app" />
             <option value="$PROJECT_DIR$/libbase" />
+            <option value="$PROJECT_DIR$/libcamerakit" />
             <option value="$PROJECT_DIR$/libffplayer" />
             <option value="$PROJECT_DIR$/libhwplayer" />
             <option value="$PROJECT_DIR$/libmediapicker" />
