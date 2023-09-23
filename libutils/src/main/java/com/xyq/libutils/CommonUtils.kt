@@ -20,11 +20,7 @@ object CommonUtils {
         val hour = timeS / 3600
         val minute = timeS / 60
         val second = timeS - hour * 3600 - minute * 60
-        return "${alignment(hour)}:${alignment(minute)}:${alignment(second)}"
-    }
-
-    private fun alignment(time: Int): String {
-        return if (time > 9) "$time" else "0$time"
+        return "%02d:%02d:%02d".format(hour, minute, second) // 00:00:00
     }
 
     fun generateTextBitmap(text: String, textSize: Float, context: Context): Bitmap {

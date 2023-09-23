@@ -15,8 +15,8 @@ abstract class BaseFilter : IFilter {
         if (!mDrawer!!.hasInit()) {
             mDrawer!!.init(false)
         }
-        mDrawer!!.setCanvasSize(pipeline.canvasWidth, pipeline.canvasHeight)
-        mDrawer!!.setVideoSize(pipeline.width, pipeline.height)
+        mDrawer!!.setCanvasSize(pipeline.canvasSize)
+        mDrawer!!.setFrameSize(pipeline.frameSize)
         val id = doProcess(pipeline.texId)
         return if (mNextFilter == null) {
             id

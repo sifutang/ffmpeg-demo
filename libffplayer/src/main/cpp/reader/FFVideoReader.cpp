@@ -193,7 +193,7 @@ void FFVideoReader::getFrame(int64_t pts, int width, int height, uint8_t *buffer
 }
 
 
-void FFVideoReader::getNextFrame(std::function<void(AVFrame *)> frameArrivedCallback) {
+void FFVideoReader::getNextFrame(const std::function<void(AVFrame *)>& frameArrivedCallback) {
     if (mAvFrame == nullptr) {
         mAvFrame = av_frame_alloc();
     }
@@ -229,14 +229,14 @@ void FFVideoReader::getNextFrame(std::function<void(AVFrame *)> frameArrivedCall
 }
 
 int FFVideoReader::getRotate(AVStream *stream) {
-    AVDictionaryEntry *tag;
+    AVDictionaryEntry *tag = nullptr;
 
-//    while ((tag = av_dict_get(stream->metadata, "", tag, AV_DICT_IGNORE_SUFFIX))) {
-//        LOGW("[video] metadata: %s, %s", tag->key, tag->value)
-//    }
+    while ((tag = av_dict_get(stream->metadata, "", tag, AV_DICT_IGNORE_SUFFIX))) {
+        LOGW("[video] metadata: %s, %s", tag->key, tag->value)
+    }
 
     tag = av_dict_get(stream->metadata, "rotate", nullptr, 0);
-    LOGE("getRotate: %s", tag == nullptr ? "-1" : tag->value)
+    LOGE("try getRotate from tag(rotate): %s", tag == nullptr ? "-1" : tag->value)
     int rotate;
     if (tag != nullptr) {
         rotate = atoi(tag->value);
@@ -250,6 +250,11 @@ int FFVideoReader::getRotate(AVStream *stream) {
     }
 
     LOGE("getRotate: %d", rotate)
+    if (rotate < 0) { // CCW -> CC(Clockwise)
+        rotate %= 360;
+        rotate += 360;
+        LOGE("getRotate fix: %d", rotate)
+    }
 
     return rotate < 0 ? 0 : rotate;
 }

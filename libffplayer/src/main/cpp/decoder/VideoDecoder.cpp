@@ -138,7 +138,7 @@ bool VideoDecoder::prepare() {
 
     mAvFrame = av_frame_alloc();
     mStartTimeMsForSync = -1;
-    mRetryReceiveCount = 7;
+    mRetryReceiveCount = RETRY_RECEIVE_COUNT;
     LOGI("codec name: %s", mVideoCodec->name)
 
     return true;
@@ -166,11 +166,17 @@ int VideoDecoder::decode(AVPacket *avPacket) {
     }
 
     if (receiveRes != 0) {
-        LOGE("[video] avcodec_receive_frame err: %d, resent: %d", receiveRes, mNeedResent)
+        LOGE("[video] avcodec_receive_frame err: %d, resent: %d, retry count: %" PRId64, receiveRes, mNeedResent, mRetryReceiveCount)
         av_frame_unref(mAvFrame);
+        // decode and receive frame arrived EOF
+        if (isEof && receiveRes == AVERROR_EOF) {
+            mRetryReceiveCount = RETRY_RECEIVE_COUNT;
+        }
         // force EOF
         if (isEof && mRetryReceiveCount < 0) {
             receiveRes = AVERROR_EOF;
+            mRetryReceiveCount = RETRY_RECEIVE_COUNT;
+            mNeedResent = false;
         }
         return receiveRes;
     }
@@ -188,7 +194,8 @@ int VideoDecoder::decode(AVPacket *avPacket) {
         LOGE("[video] avcodec_receive_frame...pts: %" PRId64 ", precision seek consume: %" PRId64, mAvFrame->pts, precisionSeekConsume)
     }
 
-    if (mAvFrame->format == AV_PIX_FMT_YUV420P || mAvFrame->format == AV_PIX_FMT_NV12 || mAvFrame->format == hw_pix_fmt || mAvFrame->format == AV_PIX_FMT_RGB24) {
+    bool isEvenEdge = isEven(mAvFrame->width) && isEven(mAvFrame->height);
+    if (mAvFrame->format == hw_pix_fmt || mAvFrame->format == AV_PIX_FMT_RGB24 || (isEvenEdge && (mAvFrame->format == AV_PIX_FMT_YUV420P || mAvFrame->format == AV_PIX_FMT_NV12))) {
         if (mOnFrameArrivedListener) {
             mOnFrameArrivedListener(mAvFrame);
         }

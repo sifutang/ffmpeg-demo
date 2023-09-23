@@ -272,7 +272,7 @@ int FFMpegPlayer::readAvPacketToQueue() {
     }
 
     if (!suc) {
-        LOGI("av_read_frame, other...pts: %" PRId64, avPacket->pts)
+        LOGI("av_read_frame, other...pts: %" PRId64 ", index: %d", avPacket->pts, avPacket->stream_index)
         av_packet_free(&avPacket);
         av_freep(&avPacket);
     }
@@ -287,7 +287,7 @@ bool FFMpegPlayer::pushPacketToQueue(AVPacket *packet, const std::shared_ptr<AVP
     bool suc = false;
     while (queue->isFull()) {
         queue->wait(10);
-        LOGE("queue is full, wait 10ms, packet index: %d", packet->stream_index)
+        LOGD("queue is full, wait 10ms, packet index: %d", packet->stream_index)
     }
     if (!mIsSeek) {
         queue->push(packet);
@@ -593,11 +593,10 @@ bool FFMpegPlayer::seek(double timeS) {
 }
 
 void FFMpegPlayer::updatePlayerState(PlayerState state) {
-    if (mPlayerState == state) {
-        return;
+    if (mPlayerState != state) {
+        LOGI("updatePlayerState from %d to %d", mPlayerState, state);
+        mPlayerState = state;
     }
-    LOGI("updatePlayerState from %d to %d", mPlayerState, state);
-    mPlayerState = state;
 }
 
 int FFMpegPlayer::getRotate() {

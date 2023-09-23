@@ -5,6 +5,10 @@ import java.nio.ByteOrder
 
 object FFMpegUtils {
 
+    init {
+        System.loadLibrary("ffplayer")
+    }
+
     interface VideoFrameArrivedInterface {
         /**
          * @param duration

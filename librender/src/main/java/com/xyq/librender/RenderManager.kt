@@ -1,10 +1,8 @@
 package com.xyq.librender
 
 import android.content.Context
-import android.graphics.Bitmap
+import android.util.Size
 import com.xyq.librender.model.RenderData
-import com.xyq.librender.utils.OpenGLTools
-import com.xyq.librender.utils.TextureHelper
 import com.xyq.librender.core.IDrawer
 import com.xyq.librender.core.NV12Drawer
 import com.xyq.librender.core.OesDrawer
@@ -12,7 +10,10 @@ import com.xyq.librender.core.RgbDrawer
 import com.xyq.librender.core.RgbaDrawer
 import com.xyq.librender.core.YuvDrawer
 import com.xyq.librender.filter.IFilter
+import com.xyq.librender.model.FrameBuffer
 import com.xyq.librender.model.Pipeline
+import com.xyq.librender.utils.OpenGLTools
+import java.nio.ByteBuffer
 
 class RenderManager(private val mContext: Context) {
 
@@ -26,18 +27,13 @@ class RenderManager(private val mContext: Context) {
 
     private val mRenderCache = HashMap<RenderFormat, IDrawer>()
 
-    private var mCanvasWidth = -1
-    private var mCanvasHeight = -1
-
-    private var mVideoWidth = -1
-    private var mVideoHeight = -1
-
+    private var mCanvasSize = Size(-1, -1)
+    private var mVideoSize = Size(-1, -1)
     private var mVideoRotate = 0
 
     private var mVideoDrawer: IDrawer? = null
     private var mDisplayDrawer: IDrawer? = null
 
-    private var mWaterMarkTextureId = -1
     private val mFilterProcessor = FilterProcessor()
 
     fun convert(format: Int): RenderFormat {
@@ -115,18 +111,12 @@ class RenderManager(private val mContext: Context) {
         mDisplayDrawer = take(RenderFormat.RGBA, mContext)
     }
 
-    fun setWaterMark(bitmap: Bitmap) {
-        if (mWaterMarkTextureId > 0) {
-            val textures = IntArray(1)
-            textures[0] = mWaterMarkTextureId
-            OpenGLTools.deleteTextureIds(textures)
+    fun makeCurrent(format: RenderFormat?) {
+        mVideoDrawer = if (format == null) {
+            null
+        } else {
+            take(format, mContext)
         }
-
-        mWaterMarkTextureId = TextureHelper.loadTexture(bitmap)
-    }
-
-    fun makeCurrent(format: RenderFormat) {
-        mVideoDrawer = take(format, mContext)
     }
 
     fun pushVideoData(format: RenderFormat, data: RenderData) {
@@ -139,13 +129,11 @@ class RenderManager(private val mContext: Context) {
     }
 
     fun setVideoSize(width: Int, height: Int) {
-        mVideoWidth = width
-        mVideoHeight = height
+        mVideoSize = Size(width, height)
     }
 
     fun setCanvasSize(width: Int, height: Int) {
-        mCanvasWidth = width
-        mCanvasHeight = height
+        mCanvasSize = Size(width, height)
     }
 
     fun addFilter(filter: IFilter) {
@@ -156,24 +144,24 @@ class RenderManager(private val mContext: Context) {
         mFilterProcessor.removeFilter(filter)
     }
 
-    fun draw() {
-        if (mVideoDrawer == null) return
+    fun draw(readPixel: Boolean): FrameBuffer? {
+        if (mVideoDrawer == null) {
+            return null
+        }
 
         // step1: draw video
         val rotate = mVideoRotate
-        var videoWidth = mVideoWidth
-        var videoHeight = mVideoHeight
+        var videoSize = mVideoSize
         if (rotate == 90 || rotate == 270) {
-            videoWidth = mVideoHeight
-            videoHeight = mVideoWidth
+            videoSize = Size(mVideoSize.height, mVideoSize.width)
         }
         mVideoDrawer!!.setRotate(rotate) // 视频旋转处理
-        mVideoDrawer!!.setVideoSize(videoWidth, videoHeight)
-        mVideoDrawer!!.setCanvasSize(mCanvasWidth, mCanvasHeight)
-        val videoOutputId = mVideoDrawer!!.drawToFbo()
+        mVideoDrawer!!.setFrameSize(videoSize)
+        mVideoDrawer!!.setCanvasSize(mCanvasSize)
+        val videoOutputId = mVideoDrawer!!.drawToTex()
 
         // step2: draw filter
-        val pipeline = Pipeline(videoOutputId, mCanvasWidth, mCanvasHeight, videoWidth, videoHeight)
+        val pipeline = Pipeline(videoOutputId, mCanvasSize, videoSize, 0)
         var texId = mFilterProcessor.process(pipeline)
         if (texId < 0) {
             texId = videoOutputId
@@ -181,9 +169,17 @@ class RenderManager(private val mContext: Context) {
 
         // step3: draw to screen
         mDisplayDrawer?.setRotate(0)
-        mDisplayDrawer?.setVideoSize(videoWidth, videoHeight)
-        mDisplayDrawer?.setCanvasSize(mCanvasWidth, mCanvasHeight)
+        mDisplayDrawer?.setFrameSize(videoSize)
+        mDisplayDrawer?.setCanvasSize(mCanvasSize)
         mDisplayDrawer?.draw(texId)
+
+        // step4: read pixel if need
+        var frameBuffer: FrameBuffer? = null
+        if (readPixel) {
+            val buf = OpenGLTools.readPixel(texId, videoSize.width, videoSize.height)
+            frameBuffer = FrameBuffer(videoSize.width, videoSize.height, buf)
+        }
+        return frameBuffer
     }
 
 }

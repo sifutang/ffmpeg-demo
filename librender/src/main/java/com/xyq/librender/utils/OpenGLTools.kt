@@ -2,6 +2,7 @@ package com.xyq.librender.utils
 
 import android.opengl.GLES20
 import android.util.Log
+import java.nio.ByteBuffer
 
 object OpenGLTools {
 
@@ -67,5 +68,22 @@ object OpenGLTools {
         val fbArr = IntArray(1)
         fbArr[0] = fb
         GLES20.glDeleteFramebuffers(1, fbArr, 0)
+    }
+
+    fun readPixel(texId: Int, width: Int, height: Int): ByteBuffer {
+        val buffer = ByteBuffer.allocate(width * height * 4)
+        val outFrame = IntArray(1)
+        val preFrame = IntArray(1)
+        GLES20.glGetIntegerv(GLES20.GL_FRAMEBUFFER_BINDING, preFrame, 0)
+
+        GLES20.glGenFramebuffers(1, outFrame, 0)
+        GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, outFrame[0])
+        GLES20.glFramebufferTexture2D(GLES20.GL_FRAMEBUFFER, GLES20.GL_COLOR_ATTACHMENT0, GLES20.GL_TEXTURE_2D, texId, 0)
+        GLES20.glReadPixels(0, 0, width, height, GLES20.GL_RGBA, GLES20.GL_UNSIGNED_BYTE, buffer)
+        GLES20.glFinish()
+        GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, preFrame[0])
+        GLES20.glDeleteFramebuffers(1, outFrame, 0)
+
+        return buffer
     }
 }

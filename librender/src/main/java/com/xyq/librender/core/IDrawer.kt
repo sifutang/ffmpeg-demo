@@ -23,20 +23,20 @@ interface IDrawer {
      * 内部生成FBO，绘制到FBO上的纹理
      * 返回纹理id
      */
-    fun drawToFbo(): Int
+    fun drawToTex(): Int
 
     /**
      * 外部传入纹理做输入，然后绘制到FBO
      */
-    fun drawToFbo(input: Int): Int
+    fun drawToTex(from: Int): Int
 
     fun release()
 
-    fun setVideoSize(w: Int, h: Int)
+    fun setFrameSize(size: Size)
 
-    fun getVideoSize(): Size
+    fun getFrameSize(): Size
 
-    fun setCanvasSize(w: Int, h: Int)
+    fun setCanvasSize(size: Size)
 
     fun setRotate(rotate: Int)
 }

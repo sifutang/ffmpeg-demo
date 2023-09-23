@@ -1,5 +1,6 @@
 package com.xyq.libmediapicker.entity
 
+import android.net.Uri
 import android.os.Parcel
 import android.os.Parcelable
 import android.provider.MediaStore
@@ -38,16 +39,16 @@ class Media(val path: String,
         return mediaType == MediaStore.Files.FileColumns.MEDIA_TYPE_VIDEO
     }
 
+    fun getFileUri(): Uri {
+        return Uri.parse("file://${path}")
+    }
+
     fun getDurationDesc(): String {
         val second = duration / 1000
         val m = (second / 60).toInt()
         val h = (second / 3600).toInt()
         val s = (second - h * 3600 - m * 60).toInt()
-        return "${align(h)}:${align(m)}:${align(s)}" // 00:00:00
-    }
-
-    private fun align(time: Int): String {
-        return if (time > 9) "$time" else "0$time"
+        return "%02d:%02d:%02d".format(h, m, s) // 00:00:00
     }
 
     override fun toString(): String {

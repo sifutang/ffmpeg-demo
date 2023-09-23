@@ -5,7 +5,7 @@ package com.xyq.ffmpegdemo.player
  */
 interface IMediaPlayer {
 
-    fun prepare(path: String)
+    fun prepare(path: String, config: PlayerConfig, isVideo: Boolean = true)
 
     fun start()
 

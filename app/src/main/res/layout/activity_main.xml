@@ -16,7 +16,7 @@
         app:layout_constraintTop_toTopOf="parent" />
 
     <ImageView
-        android:id="@+id/image_view"
+        android:id="@+id/iv_watermark"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         app:layout_constraintBottom_toBottomOf="parent"
@@ -42,20 +42,10 @@
         android:layout_marginTop="8dp"/>
 
     <Button
-        android:id="@+id/btn_camera"
+        android:id="@+id/btn_export"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="@string/res_camera_capture"
-        app:layout_constraintLeft_toLeftOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/btn_export_gif"
-        android:layout_marginStart="8dp"
-        android:layout_marginTop="8dp"/>
-
-    <Button
-        android:id="@+id/btn_export_gif"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="@string/res_export_gif"
+        android:text="@string/res_export"
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintTop_toTopOf="parent"
         android:layout_marginStart="8dp"

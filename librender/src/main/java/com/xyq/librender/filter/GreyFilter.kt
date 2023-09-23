@@ -42,6 +42,6 @@ class GreyFilter(context: Context): BaseFilter() {
     }
 
     override fun doProcess(tex: Int): Int {
-        return mDrawer!!.drawToFbo(tex)
+        return mDrawer!!.drawToTex(tex)
     }
 }

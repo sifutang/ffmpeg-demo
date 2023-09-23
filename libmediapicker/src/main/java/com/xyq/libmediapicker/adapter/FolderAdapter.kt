@@ -62,7 +62,7 @@ class FolderAdapter(private var folders: ArrayList<Folder>,
         if (folder.getMedias().size > 0) {
             media = folder.getMedias()[0]
             Glide.with(context)
-                .load(Uri.parse("file://" + media.path))
+                .load(media.getFileUri())
                 .into(holder.cover)
         } else {
             holder.cover.setImageDrawable(ContextCompat.getDrawable(context, R.drawable.default_image))

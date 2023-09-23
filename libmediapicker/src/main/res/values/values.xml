@@ -5,6 +5,7 @@
     <string name="all_image">图片</string>
     <string name="all_video">所有视频</string>
     <string name="done">完成</string>
+    <string name="btn_camera">拍摄</string>
 
     <string name="select_image_title">选择图片</string>
     <string name="select_title">选择图片或视频</string>

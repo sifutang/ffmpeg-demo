@@ -27,11 +27,4 @@ object ResManager {
             return shader
         }
     }
-
-
-
-
-
-
-
 }

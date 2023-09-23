@@ -45,6 +45,8 @@ private:
     int mWidth = -1;
     int mHeight = -1;
 
+    int RETRY_RECEIVE_COUNT = 7;
+
     int64_t mStartTimeMsForSync = -1;
     int64_t mCurTimeStampMs = 0;
 

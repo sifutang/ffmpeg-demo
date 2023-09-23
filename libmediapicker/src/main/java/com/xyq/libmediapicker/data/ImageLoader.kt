@@ -41,7 +41,7 @@ class ImageLoader(private val context: Context,
             folders.add(allFolder)
 
             data?.let {
-                Log.i(TAG, "doLoadFinished: count: ${it.count}")
+                it.moveToPosition(-1)
                 while (it.moveToNext()) {
                     val path = it.getString(it.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DATA))
                     val name = it.getString(it.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DISPLAY_NAME))
@@ -66,9 +66,9 @@ class ImageLoader(private val context: Context,
                         folders.add(folder)
                     }
                 }
+                Log.i(TAG, "doLoadFinished: count: ${it.count}")
             }
             loaderCallback.onMediaDataArrived(folders)
-            data?.close()
         } catch (e: Exception) {
             e.printStackTrace()
         }

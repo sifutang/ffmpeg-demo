@@ -1,7 +1,7 @@
 <resources>
     <string name="app_name">MyPlayer</string>
     <string name="res_import">导入</string>
-    <string name="res_export_gif">导出gif</string>
+    <string name="res_export">导出</string>
     <string name="res_camera_capture">拍摄</string>
     <string name="default_duration_desc">00:00:00</string>
 </resources>

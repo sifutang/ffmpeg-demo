@@ -48,8 +48,8 @@ abstract class BaseDrawer(private val mContext: Context) : IDrawer {
     private var mCanvasWidth = -1
     private var mCanvasHeight = -1
 
-    protected var mVideoWidth = -1
-    protected var mVideoHeight = -1
+    protected var mFrameWidth = -1
+    protected var mFrameHeight = -1
     protected var mBackgroundColor = floatArrayOf(
         23f / 255, 23f / 255, 23f / 255, 1f
     )
@@ -88,25 +88,25 @@ abstract class BaseDrawer(private val mContext: Context) : IDrawer {
         mTextureBuffer.position(0)
     }
 
-    override fun setVideoSize(w: Int, h: Int) {
-        if (mVideoWidth != w || mVideoHeight != h) {
-            mVideoWidth = w
-            mVideoHeight = h
+    override fun setFrameSize(size: Size) {
+        if (mFrameWidth != size.width || mFrameHeight != size.height) {
+            mFrameWidth = size.width
+            mFrameHeight = size.height
             mNeedResetMatrix = true
-            Log.i(TAG, "setVideoSize: $w x $h")
+            Log.i(TAG, "setVideoSize: $size")
         }
     }
 
-    override fun getVideoSize(): Size {
-        return Size(mVideoWidth, mVideoHeight)
+    override fun getFrameSize(): Size {
+        return Size(mFrameWidth, mFrameHeight)
     }
 
-    override fun setCanvasSize(w: Int, h: Int) {
-        if (mCanvasWidth != w || mCanvasHeight != h) {
-            mCanvasWidth = w
-            mCanvasHeight = h
+    override fun setCanvasSize(size: Size) {
+        if (mCanvasWidth != size.width || mCanvasHeight != size.height) {
+            mCanvasWidth = size.width
+            mCanvasHeight = size.height
             mNeedResetMatrix = true
-            Log.i(TAG, "setWorldSize: $w x $h")
+            Log.i(TAG, "setWorldSize: $size")
         }
     }
 
@@ -191,21 +191,21 @@ abstract class BaseDrawer(private val mContext: Context) : IDrawer {
         drawCore(textures, false, mMatrix)
     }
 
-    override fun drawToFbo(): Int {
+    override fun drawToTex(): Int {
         pendingTaskRun()
         return drawToFbo(mTextures, true)
     }
 
-    override fun drawToFbo(input: Int): Int {
+    override fun drawToTex(from: Int): Int {
         pendingTaskRun()
         val textures = IntArray(1)
-        textures[0] = input
+        textures[0] = from
         return drawToFbo(textures, false)
     }
 
     private fun drawToFbo(inputs: IntArray?, useBufferInput: Boolean): Int {
-        if (mFboDesc == null && mVideoWidth > 0 && mVideoHeight > 0) {
-            mFboDesc = FboDesc(mVideoWidth, mVideoHeight)
+        if (mFboDesc == null && mFrameWidth > 0 && mFrameHeight > 0) {
+            mFboDesc = FboDesc(mFrameWidth, mFrameHeight)
             Log.i(TAG, "drawToFbo: create fbo: $mFboDesc")
         }
 
@@ -216,8 +216,8 @@ abstract class BaseDrawer(private val mContext: Context) : IDrawer {
 
         mFboDesc!!.bind()
         mFboDesc!!.updateRotate(mRotate)
-        mFboDesc!!.updateSize(mVideoWidth, mVideoHeight)
-        GLES20.glViewport(0, 0, mVideoWidth ,mVideoHeight)
+        mFboDesc!!.updateSize(mFrameWidth, mFrameHeight)
+        GLES20.glViewport(0, 0, mFrameWidth ,mFrameHeight)
         drawCore(inputs, useBufferInput, mFboDesc!!.getMatrix())
         mFboDesc!!.unBind()
 
@@ -249,7 +249,7 @@ abstract class BaseDrawer(private val mContext: Context) : IDrawer {
         }
         mNeedResetMatrix = false
         // update normal matrix
-        if (mVideoWidth != -1 && mVideoHeight != -1 && mCanvasWidth != -1 && mCanvasHeight != -1) {
+        if (mFrameWidth != -1 && mFrameHeight != -1 && mCanvasWidth != -1 && mCanvasHeight != -1) {
             Log.i(TAG, "initDefMatrix: rotate: $mRotate")
 
             var worldWidth = mCanvasWidth
@@ -261,7 +261,7 @@ abstract class BaseDrawer(private val mContext: Context) : IDrawer {
 
             mMatrix = FloatArray(16)
             val projMatrix = FloatArray(16)
-            val originRatio = mVideoWidth / mVideoHeight.toFloat()
+            val originRatio = mFrameWidth / mFrameHeight.toFloat()
             val worldRatio = worldWidth / worldHeight.toFloat()
             if (originRatio > worldRatio) {
                 val actualRatio = originRatio / worldRatio
@@ -302,7 +302,7 @@ abstract class BaseDrawer(private val mContext: Context) : IDrawer {
         }
 
         if (matrix == null) {
-            Log.e(TAG, "drawCore: matrix not ready")
+            Log.e(TAG, "drawCore: matrix not ready, video size: $mFrameWidth x $mFrameHeight, canvas: $mCanvasWidth x $mCanvasHeight, this: $this")
             return
         }
 

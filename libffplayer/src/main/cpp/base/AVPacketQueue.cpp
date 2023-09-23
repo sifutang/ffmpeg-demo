@@ -50,6 +50,7 @@ int AVPacketQueue::popTo(AVPacket *packet) {
     // flush packet
     if (pkt->size == 0 && pkt->data == nullptr) {
         // av_packet_ref出来后，packet->data不为nullptr了，这里强制reset下
+        LOGI("[AVPacketQueue], flush packet index: %d", pkt->stream_index)
         packet->size = 0;
         packet->data = nullptr;
     }

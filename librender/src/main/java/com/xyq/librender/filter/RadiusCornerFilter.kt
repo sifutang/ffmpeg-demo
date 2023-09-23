@@ -35,14 +35,14 @@ class RadiusCornerFilter(context: Context): BaseFilter() {
             override fun uploadData(textures: IntArray, data: RenderData?) {
                 super.uploadData(textures, data)
                 GLES20.glUniform1f(radiusHandler, mRadius)
-                GLES20.glUniform2f(texSizeHandler, mVideoWidth.toFloat(), mVideoHeight.toFloat())
+                GLES20.glUniform2f(texSizeHandler, mFrameWidth.toFloat(), mFrameHeight.toFloat())
                 GLES20.glUniform4f(bgColorHandler, mBackgroundColor[0], mBackgroundColor[1], mBackgroundColor[2], mBackgroundColor[3])
             }
         }
     }
 
     override fun doProcess(tex: Int): Int {
-        return mDrawer!!.drawToFbo(tex)
+        return mDrawer!!.drawToTex(tex)
     }
 
     override fun setVal(key: String, value: Float) {

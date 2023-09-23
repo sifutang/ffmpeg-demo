@@ -18,7 +18,7 @@ public:
 
     void getFrame(int64_t pts, int width, int height, uint8_t *buffer, bool precise = true);
 
-    void getNextFrame(std::function<void(AVFrame *)> frameArrivedCallback);
+    void getNextFrame(const std::function<void(AVFrame *)>& frameArrivedCallback);
 
 private:
     bool mInit = false;

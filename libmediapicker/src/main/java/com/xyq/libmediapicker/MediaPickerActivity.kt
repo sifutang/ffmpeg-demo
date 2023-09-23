@@ -16,6 +16,7 @@ import androidx.loader.app.LoaderManager
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
+import com.xyq.camerakit.CameraPreviewActivity
 import com.xyq.libmediapicker.adapter.FolderAdapter
 import com.xyq.libmediapicker.adapter.MediaGridAdapter
 import com.xyq.libmediapicker.adapter.SpacingDecoration
@@ -32,12 +33,25 @@ import pub.devrel.easypermissions.EasyPermissions
 class MediaPickerActivity: FragmentActivity(), MediaDataCallback, View.OnClickListener  {
 
     private lateinit var argsIntent: Intent
-    private lateinit var recyclerView: RecyclerView
-    private lateinit var btnDone: Button
-    private lateinit var btnCategory: Button
     private lateinit var folderPopupWindow: ListPopupWindow
     private lateinit var gridAdapter: MediaGridAdapter
     private lateinit var folderAdapter: FolderAdapter
+
+    private val btnDone: Button by lazy {
+        findViewById<Button>(R.id.btn_done).apply {
+            setOnClickListener(this@MediaPickerActivity)
+        }
+    }
+
+    private val btnCategory: Button by lazy {
+        findViewById<Button>(R.id.btn_category).apply {
+            setOnClickListener(this@MediaPickerActivity)
+        }
+    }
+
+    private val recyclerView: RecyclerView by lazy {
+        findViewById(R.id.recycler_view)
+    }
 
     private var onBackPressedCallback = object : OnBackPressedCallback(true) {
         override fun handleOnBackPressed() {
@@ -50,13 +64,8 @@ class MediaPickerActivity: FragmentActivity(), MediaDataCallback, View.OnClickLi
         argsIntent = intent
 
         setContentView(R.layout.main_media_picker)
-        recyclerView = findViewById(R.id.recycler_view)
-        btnDone = findViewById(R.id.btn_done)
-        btnDone.setOnClickListener(this)
-        btnCategory = findViewById(R.id.btn_category)
-        btnCategory.setOnClickListener(this)
         findViewById<ImageView>(R.id.btn_back).setOnClickListener(this)
-
+        findViewById<Button>(R.id.btn_camera).setOnClickListener(this)
         onBackPressedDispatcher.addCallback(onBackPressedCallback)
 
         setTitleBar()
@@ -80,7 +89,7 @@ class MediaPickerActivity: FragmentActivity(), MediaDataCallback, View.OnClickLi
     }
 
     private fun setTitleBar() {
-        when (argsIntent.getIntExtra(PickerConfig.SELECT_MODE, PickerConfig.PICKER_IMAGE_VIDEO)) {
+        when (argsIntent.getIntExtra(PickerConfig.SELECT_MODE, PickerConfig.PICKER_VIDEO)) {
             PickerConfig.PICKER_IMAGE_VIDEO -> {
                 (findViewById<View>(R.id.bar_title) as TextView).text = getString(R.string.select_title)
             }
@@ -169,6 +178,9 @@ class MediaPickerActivity: FragmentActivity(), MediaDataCallback, View.OnClickLi
             }
         } else if (v?.id == R.id.btn_done) {
             doSelectMediaFileFinish(gridAdapter.getSelectMedias())
+        } else if (v?.id == R.id.btn_camera) {
+            val intent = Intent(this, CameraPreviewActivity::class.java)
+            startActivity(intent)
         }
     }
 

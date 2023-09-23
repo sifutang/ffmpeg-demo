@@ -66,7 +66,7 @@ class RenderTestActivity : AppCompatActivity(), GLSurfaceView.Renderer {
     }
 
     override fun onDrawFrame(gl: GL10?) {
-        mRenderManager.draw()
+        mRenderManager.draw(false)
     }
 
     fun setRenderFormat(format: RenderManager.RenderFormat) {

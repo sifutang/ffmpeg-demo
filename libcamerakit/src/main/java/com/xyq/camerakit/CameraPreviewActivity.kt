@@ -8,12 +8,15 @@ import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.provider.MediaStore
 import android.util.Log
+import android.view.GestureDetector.SimpleOnGestureListener
 import android.view.MotionEvent
 import android.view.ScaleGestureDetector
 import android.widget.Button
+import android.widget.ImageView
 import android.widget.Toast
 import androidx.camera.core.Camera
 import androidx.camera.core.CameraSelector
+import androidx.camera.core.FocusMeteringAction
 import androidx.camera.core.ImageCapture
 import androidx.camera.core.ImageCaptureException
 import androidx.camera.core.Preview
@@ -30,6 +33,7 @@ import androidx.camera.view.PreviewView
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.core.content.PermissionChecker
+import androidx.core.view.GestureDetectorCompat
 import java.text.SimpleDateFormat
 import java.util.Locale
 import java.util.concurrent.ExecutorService
@@ -41,6 +45,7 @@ class CameraPreviewActivity : AppCompatActivity() {
     private var videoCapture: VideoCapture<Recorder>? = null
     private var recording: Recording? = null
     private var camera: Camera? = null
+    private var cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
 
     private lateinit var cameraExecutor: ExecutorService
     private lateinit var viewFinder: PreviewView
@@ -62,6 +67,7 @@ class CameraPreviewActivity : AppCompatActivity() {
     }
 
     private var scaleGestureDetector: ScaleGestureDetector? = null
+    private var gestureDetector: GestureDetectorCompat? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -96,20 +102,22 @@ class CameraPreviewActivity : AppCompatActivity() {
         viewFinder = findViewById(R.id.viewFinder)
         viewFinder.scaleType = PreviewView.ScaleType.FIT_CENTER
         viewFinder.setOnTouchListener { v, event ->
+            event?.let {
+                scaleGestureDetector!!.onTouchEvent(it)
+                if (!scaleGestureDetector!!.isInProgress) {
+                    // See pinch-to-zooom scenario for gestureDetector definition.
+                    gestureDetector!!.onTouchEvent(event)
+                }
+            }
+
             if (event?.action == MotionEvent.ACTION_UP) {
                 v?.performClick()
             }
-            var didConsume = false
-            event?.let {
-                didConsume = scaleGestureDetector!!.onTouchEvent(it)
-                //                    if (!scaleGestureDetector.isInProgress) {
-                // See pinch-to-zooom scenario for gestureDetector definition.
-                //                        didConsume = gestureDetector.onTouchEvent(event)
-                //                    }
-            }
-            didConsume
+
+            true
         }
         // Set up the listeners for take photo and video capture buttons
+        findViewById<ImageView>(R.id.image_camera_switch).setOnClickListener { switchCamera() }
         findViewById<Button>(R.id.image_capture_button).setOnClickListener { takePhoto() }
         videoCaptureButton = findViewById<Button>(R.id.video_capture_button).apply {
             setOnClickListener { captureVideo() }
@@ -117,6 +125,18 @@ class CameraPreviewActivity : AppCompatActivity() {
     }
 
     private fun initGestureDetector() {
+        // focus and metering
+        gestureDetector = GestureDetectorCompat(this, object : SimpleOnGestureListener() {
+            override fun onSingleTapUp(e: MotionEvent): Boolean {
+                val focusPoint = viewFinder.meteringPointFactory.createPoint(e.x, e.y)
+                val meteringAction = FocusMeteringAction.Builder(focusPoint).build()
+                camera?.cameraControl?.cancelFocusAndMetering()
+                camera?.cameraControl?.startFocusAndMetering(meteringAction)
+                return true
+            }
+        })
+
+        // zoom
         scaleGestureDetector = ScaleGestureDetector(this, object: ScaleGestureDetector.SimpleOnScaleGestureListener() {
             override fun onScale(detector: ScaleGestureDetector): Boolean {
                 camera?.let {
@@ -132,9 +152,11 @@ class CameraPreviewActivity : AppCompatActivity() {
     }
 
     private fun startCamera() {
+        Log.i(TAG, "startCamera: ")
         val cameraProviderFuture = ProcessCameraProvider.getInstance(this)
 
         cameraProviderFuture.addListener({
+            Log.i(TAG, "startCamera: core")
             // Used to bind the lifecycle of cameras to the lifecycle owner
             val cameraProvider: ProcessCameraProvider = cameraProviderFuture.get()
 
@@ -154,9 +176,6 @@ class CameraPreviewActivity : AppCompatActivity() {
             // Photo
             imageCapture = ImageCapture.Builder().build()
 
-            // Select back camera as a default
-            val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
-
             try {
                 // Unbind use cases before rebinding
                 cameraProvider.unbindAll()
@@ -168,7 +187,16 @@ class CameraPreviewActivity : AppCompatActivity() {
                 Log.e(TAG, "Use case binding failed", exc)
             }
 
+            Log.i(TAG, "startCamera: core end")
         }, ContextCompat.getMainExecutor(this))
+        Log.i(TAG, "startCamera: end")
+    }
+
+    private fun switchCamera() {
+        val selector = if (cameraSelector == CameraSelector.DEFAULT_BACK_CAMERA) CameraSelector.DEFAULT_FRONT_CAMERA else CameraSelector.DEFAULT_BACK_CAMERA
+        Log.i(TAG, "switchCamera: $selector")
+        cameraSelector = selector
+        startCamera()
     }
 
     private fun takePhoto() {

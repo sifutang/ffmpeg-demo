@@ -1,7 +1,6 @@
 package com.xyq.ffmpegdemo.player
 
 import android.content.Context
-import android.graphics.Bitmap
 import android.media.AudioAttributes
 import android.media.AudioFormat
 import android.media.AudioManager
@@ -14,11 +13,13 @@ import com.xyq.libbase.player.IPlayer
 import com.xyq.libbase.player.IPlayerListener
 import com.xyq.libffplayer.FFPlayer
 import com.xyq.libhwplayer.HwPlayer
+import com.xyq.libhwplayer.ImagePlayer
 import com.xyq.librender.RenderManager
 import com.xyq.librender.core.OesDrawer
 import com.xyq.librender.filter.GreyFilter
 import com.xyq.librender.filter.IFilter
 import com.xyq.librender.filter.RadiusCornerFilter
+import com.xyq.librender.model.FrameBuffer
 import com.xyq.librender.model.RenderData
 import com.xyq.libutils.CommonUtils
 import java.nio.ByteBuffer
@@ -29,8 +30,7 @@ import kotlin.math.abs
 import kotlin.math.hypot
 
 class MyPlayer(private val mContext: Context,
-               private val mGlSurfaceView: GLSurfaceView,
-               private val mConfig: PlayerConfig): GLSurfaceView.Renderer, IMediaPlayer, IPlayerListener {
+               private val mGlSurfaceView: GLSurfaceView): GLSurfaceView.Renderer, IMediaPlayer, IPlayerListener {
 
     companion object {
         private const val TAG = "MyPlayer"
@@ -47,17 +47,12 @@ class MyPlayer(private val mContext: Context,
         RELEASE
     }
 
-    private var mPlayerProxy: IPlayer = if (mConfig.decodeConfig == PlayerConfig.DecodeConfig.USE_FF_HW_DECODER || mConfig.decodeConfig == PlayerConfig.DecodeConfig.USE_FF_SW_DECODER) {
-        FFPlayer()
-    } else {
-        HwPlayer()
-    }
+    private lateinit var mProxy: IPlayer
 
     private var mAudioTrack: AudioTrack? = null
     private var mVisualizer: Visualizer? = null
 
     private val mRenderManager = RenderManager(mContext)
-    private var mWaterMarkBitmap: Bitmap? = null
     private var mGreyFilter: IFilter? = null
     private var mRadiusCornerFilter: IFilter? = null
 
@@ -75,22 +70,18 @@ class MyPlayer(private val mContext: Context,
 
     private var mMediaPlayerStatusListener: IMediaPlayerStatusListener? = null
 
-    init {
-        mPlayerProxy.init()
-        mPlayerProxy.setPlayerListener(this)
-        mState = State.INIT
+    private var mGetImageCallback:((FrameBuffer?) -> Unit)? = null
 
+    init {
         mGlSurfaceView.setEGLContextClientVersion(2)
         mGlSurfaceView.setRenderer(this)
         mGlSurfaceView.renderMode = GLSurfaceView.RENDERMODE_WHEN_DIRTY
-
-        mWaterMarkBitmap = CommonUtils.generateTextBitmap("雪月清的随笔", 16f, mContext)
+        mState = State.INIT
     }
 
     override fun onSurfaceCreated(gl: GL10?, config: EGLConfig?) {
         Log.i(TAG, "onSurfaceCreated: ")
         mRenderManager.init()
-        mRenderManager.setWaterMark(mWaterMarkBitmap!!)
 
         mGreyFilter = GreyFilter(mContext).apply {
             setVal(GreyFilter.VAL_PROGRESS, 0.5f)
@@ -109,53 +100,91 @@ class MyPlayer(private val mContext: Context,
 
     override fun onDrawFrame(gl: GL10?) {
         Log.d(TAG, "onDrawFrame: ")
-        mRenderManager.draw()
+        if (mGetImageCallback != null) {
+            val frameBuffer = mRenderManager.draw(true)
+            mGetImageCallback?.let { it(frameBuffer) }
+            mGetImageCallback = null
+        } else {
+            mRenderManager.draw(false)
+        }
     }
 
-    fun setFilterProgress(value: Float) {
-        val progress = CommonUtils.clamp(0f, 1f, value)
-        mGreyFilter?.setVal(GreyFilter.VAL_PROGRESS, progress)
+    fun updateFilterEffect(key: String, value: Float) {
+        if (key == GreyFilter.VAL_PROGRESS) {
+            val progress = CommonUtils.clamp(0f, 1f, value)
+            mGreyFilter?.setVal(GreyFilter.VAL_PROGRESS, progress)
+        }
+
+        if (mIsPlayComplete) {
+            mGlSurfaceView.requestRender()
+        }
+    }
+
+    fun getCurrentImage(callback: ((FrameBuffer?) -> Unit)) {
+        mGetImageCallback = callback
+        mGlSurfaceView.requestRender()
     }
 
     override fun setListener(listener: IMediaPlayerStatusListener?) {
         mMediaPlayerStatusListener = listener
     }
 
-    override fun prepare(path: String) {
+    override fun prepare(path: String, config: PlayerConfig, isVideo: Boolean) {
+        Log.i(TAG, "prepare: $path, isVideo: $isVideo")
         if (path.isEmpty()) {
             throw IllegalStateException("must first call setDataSource")
         }
 
-        val needSurface = mConfig.decodeConfig == PlayerConfig.DecodeConfig.USE_FF_HW_DECODER || mConfig.decodeConfig == PlayerConfig.DecodeConfig.USE_HW_DECODER
-        Log.i(TAG, "prepare: needSurface: $needSurface")
-        if (needSurface) {
-            mSurface?.let {
-                it.release()
-                mSurface = null
-            }
-
-            val drawer = mRenderManager.take(RenderManager.RenderFormat.OES, mContext)
-            mRenderManager.makeCurrent(RenderManager.RenderFormat.OES)
-            mGlSurfaceView.requestRender()
-
-            val st = (drawer as OesDrawer).getSurfaceTexture()
-            st.setOnFrameAvailableListener {
-                Log.d(TAG, "setOnFrameAvailableListener")
-                mGlSurfaceView.requestRender()
-            }
-            mSurface = Surface(st)
+        initProxy(config, isVideo)
+        if (isVideo) {
+            prepareSurfaceIfNeed(config)
         }
+        mProxy.prepare(path, mSurface)
 
-        mPlayerProxy.prepare(path, mSurface)
         mState = State.PREPARE
         mPath = path
         mIsPlayComplete = false
-
         mDuration = getDuration()
-        mVideoRotate = mPlayerProxy.getRotate()
+        mVideoRotate = mProxy.getRotate()
         mRenderManager.setVideoRotate(mVideoRotate)
-        mGreyFilter?.setVal(GreyFilter.VAL_PROGRESS, 0.5f)
         Log.i(TAG, "prepare: done, duration: $mDuration, rotate: $mVideoRotate")
+    }
+
+    private fun initProxy(config: PlayerConfig, isVideo: Boolean) {
+        mProxy = if (isVideo) {
+            if (config.decodeConfig == PlayerConfig.DecodeConfig.USE_FF_HW_DECODER || config.decodeConfig == PlayerConfig.DecodeConfig.USE_FF_SW_DECODER) {
+                FFPlayer()
+            } else {
+                HwPlayer()
+            }
+        } else {
+            ImagePlayer()
+        }
+
+        mProxy.init()
+        mProxy.setPlayerListener(this)
+    }
+
+    private fun prepareSurfaceIfNeed(config: PlayerConfig) {
+        val needSurface = config.decodeConfig == PlayerConfig.DecodeConfig.USE_FF_HW_DECODER || config.decodeConfig == PlayerConfig.DecodeConfig.USE_HW_DECODER
+        Log.i(TAG, "prepare: needSurface: $needSurface")
+        if (!needSurface) return
+
+        mSurface?.let {
+            it.release()
+            mSurface = null
+        }
+
+        val drawer = mRenderManager.take(RenderManager.RenderFormat.OES, mContext)
+        mRenderManager.makeCurrent(RenderManager.RenderFormat.OES)
+        mGlSurfaceView.requestRender()
+
+        val st = (drawer as OesDrawer).getSurfaceTexture()
+        st.setOnFrameAvailableListener {
+            Log.d(TAG, "setOnFrameAvailableListener")
+            mGlSurfaceView.requestRender()
+        }
+        mSurface = Surface(st)
     }
 
     /**
@@ -167,7 +196,7 @@ class MyPlayer(private val mContext: Context,
         }
 
         if (mDuration < 0) {
-            mDuration = mPlayerProxy.getDuration()
+            mDuration = mProxy.getDuration()
         }
         return mDuration
     }
@@ -185,7 +214,7 @@ class MyPlayer(private val mContext: Context,
         }
 
         mIsPlayComplete = false
-        return mPlayerProxy.seek(position)
+        return mProxy.seek(position)
     }
 
     override fun setMute(mute: Boolean) {
@@ -193,17 +222,17 @@ class MyPlayer(private val mContext: Context,
             return
         }
 
-        mPlayerProxy.setMute(mute)
+        mProxy.setMute(mute)
     }
 
     override fun start() {
-        mPlayerProxy.start()
+        mProxy.start()
         mState = State.START
     }
 
     override fun resume() {
         if (mState == State.PAUSE) {
-            mPlayerProxy.resume()
+            mProxy.resume()
             mState = State.RESUME
         } else {
             Log.e(TAG, "resume: failed, state: $mState")
@@ -214,7 +243,7 @@ class MyPlayer(private val mContext: Context,
 
     override fun pause() {
         if (mState == State.START || mState == State.RESUME) {
-            mPlayerProxy.pause()
+            mProxy.pause()
             mState = State.PAUSE
         } else {
             Log.e(TAG, "pause: failed, state: $mState")
@@ -244,13 +273,14 @@ class MyPlayer(private val mContext: Context,
         audioTrack?.stop()
         audioTrack?.release()
 
-        mPlayerProxy.stop()
+        mProxy.stop()
+        mProxy.release()
+        mRenderManager.makeCurrent(null)
     }
 
     override fun release() {
         mPath = ""
         mState = State.RELEASE
-        mPlayerProxy.release()
         mSurface?.release()
         mGlSurfaceView.queueEvent {
             mRenderManager.release()
@@ -357,7 +387,7 @@ class MyPlayer(private val mContext: Context,
 
     override fun onPlayComplete() {
         Log.d(TAG, "onNative_playComplete: ")
-        mState = MyPlayer.State.PAUSE
+        mState = State.PAUSE
         mIsPlayComplete = true
         enableAudioVisualizer(false)
         mMediaPlayerStatusListener?.onComplete()

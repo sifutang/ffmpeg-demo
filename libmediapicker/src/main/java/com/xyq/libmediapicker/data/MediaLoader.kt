@@ -40,6 +40,8 @@ class MediaLoader(private val context: Context,
     }
 
     override fun doLoadFinished(loader: Loader<Cursor>, data: Cursor?) {
+        // The Loader will release the data once it knows the application is no longer using it.
+        // For example, if the data is a android.database.Cursor from a android.content.CursorLoader, you should not call close() on it yourself
         try {
             val folders = ArrayList<Folder>()
             val allFolder = Folder(context.resources.getString(R.string.all_dir_name))
@@ -48,7 +50,7 @@ class MediaLoader(private val context: Context,
             folders.add(allVideoDir)
 
             data?.let {
-                Log.i(TAG, "doLoadFinished: count: ${it.count}")
+                it.moveToPosition(-1) // back to start point
                 while (it.moveToNext()) {
                     val path = it.getString(it.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DATA))
                     val name = it.getString(it.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DISPLAY_NAME))
@@ -57,6 +59,7 @@ class MediaLoader(private val context: Context,
                     val duration: Long = it.getLong(it.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DURATION))
                     val id: Int = it.getInt(it.getColumnIndexOrThrow(MediaStore.Files.FileColumns._ID))
                     if (path.isNullOrEmpty()) {
+                        Log.i(TAG, "doLoadFinished: path is null")
                         continue
                     }
                     val dirName = getParent(path)
@@ -76,9 +79,9 @@ class MediaLoader(private val context: Context,
                         folders.add(folder)
                     }
                 }
+                Log.i(TAG, "doLoadFinished: count: ${it.count}, folder first: ${folders[0].getMedias().size}")
             }
             loaderCallback.onMediaDataArrived(folders)
-            data?.close()
         } catch (e: Exception) {
             e.printStackTrace()
         }

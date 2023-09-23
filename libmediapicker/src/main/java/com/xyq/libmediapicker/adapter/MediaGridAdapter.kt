@@ -1,7 +1,6 @@
 package com.xyq.libmediapicker.adapter
 
 import android.content.Context
-import android.net.Uri
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -66,8 +65,7 @@ class MediaGridAdapter(
 
     override fun onBindViewHolder(holder: MyViewHolder, position: Int) {
         val media = medias[position]
-        val uri = Uri.parse("file://${media.path}")
-        Glide.with(context).load(uri).into(holder.mediaImage)
+        Glide.with(context).load(media.getFileUri()).into(holder.mediaImage)
 
         if (media.isVideo()) {
             holder.mediaInfoLayout.visibility = View.VISIBLE

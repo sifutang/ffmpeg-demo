@@ -9,4 +9,8 @@ static int64_t getCurrentTimeMs() {
     return time.tv_sec * 1000.0 + time.tv_usec / 1000.0;
 }
 
+static bool isEven(int num) {
+    return (num & 1) == 0;
+}
+
 #endif //FFMPEGDEMO_COMMONUTILS_H
