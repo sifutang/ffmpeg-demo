@@ -69,6 +69,7 @@ class MainActivity : AppCompatActivity() {
     private val mLauncher: ActivityResultLauncher<Intent> =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
             if (result.resultCode == PickerConfig.RESULT_CODE) {
+                Log.i(TAG, "select media file done")
                 val select = result.data?.getParcelableArrayListExtra<Media>(PickerConfig.EXTRA_RESULT)
                 if (select.isNullOrEmpty()) return@registerForActivityResult
                 val media = select[0]

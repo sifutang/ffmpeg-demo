@@ -135,6 +135,7 @@ class MyPlayer(private val mContext: Context,
             throw IllegalStateException("must first call setDataSource")
         }
 
+        val start = System.currentTimeMillis()
         initProxy(config, isVideo)
         if (isVideo) {
             prepareSurfaceIfNeed(config)
@@ -147,7 +148,7 @@ class MyPlayer(private val mContext: Context,
         mDuration = getDuration()
         mVideoRotate = mProxy.getRotate()
         mRenderManager.setVideoRotate(mVideoRotate)
-        Log.i(TAG, "prepare: done, duration: $mDuration, rotate: $mVideoRotate")
+        Log.i(TAG, "prepare: done, duration: $mDuration, rotate: $mVideoRotate, consume: ${System.currentTimeMillis() - start}")
     }
 
     private fun initProxy(config: PlayerConfig, isVideo: Boolean) {
