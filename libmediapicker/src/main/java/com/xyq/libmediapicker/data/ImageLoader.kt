@@ -11,6 +11,7 @@ import androidx.loader.content.Loader
 import com.xyq.libmediapicker.R
 import com.xyq.libmediapicker.entity.Folder
 import com.xyq.libmediapicker.entity.Media
+import java.io.File
 
 class ImageLoader(private val context: Context,
                   private val loaderCallback: MediaDataCallback): BaseLoader() {
@@ -49,7 +50,7 @@ class ImageLoader(private val context: Context,
                     val mediaType: Int = it.getInt(it.getColumnIndexOrThrow(MediaStore.Files.FileColumns.MEDIA_TYPE))
                     val duration: Long = it.getLong(it.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DURATION))
                     val id: Int = it.getInt(it.getColumnIndexOrThrow(MediaStore.Files.FileColumns._ID))
-                    if (path.isNullOrEmpty()) {
+                    if (path.isNullOrEmpty() || !File(path).exists()) {
                         continue
                     }
                     val dirName = getParent(path)

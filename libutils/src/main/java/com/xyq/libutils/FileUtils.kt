@@ -1,6 +1,10 @@
 package com.xyq.libutils
 
+import android.content.ContentResolver
+import android.content.ContentValues
 import android.content.Context
+import android.graphics.Bitmap
+import android.provider.MediaStore
 import android.util.Log
 import java.io.File
 import java.io.FileOutputStream
@@ -9,6 +13,10 @@ import java.io.InputStream
 object FileUtils {
 
     private const val TAG = "FileUtils"
+
+    fun fileExists(path: String): Boolean {
+        return File(path).exists()
+    }
 
     fun deleteFile(path: String) {
         val file = File(path)
@@ -56,5 +64,30 @@ object FileUtils {
             result.append("\n")
         } }
         return result.toString()
+    }
+
+    fun saveBitmapToLocal(contentResolver: ContentResolver, bitmap: Bitmap, displayName: String) {
+        val values = ContentValues().apply {
+            put(MediaStore.Images.Media.DISPLAY_NAME, displayName)
+            put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
+        }
+        val uri = contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
+        uri?.let {
+            try {
+                val outputStream = contentResolver.openOutputStream(it)
+                bitmap.compress(Bitmap.CompressFormat.JPEG, 100, outputStream)
+                outputStream?.close()
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
+    fun addToMediaStore(contentResolver: ContentResolver, path: String, mimeType: String) {
+        val values = ContentValues().apply {
+            put(MediaStore.Images.Media.DATA, path)
+            put(MediaStore.Images.Media.MIME_TYPE, mimeType)
+        }
+        contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
     }
 }

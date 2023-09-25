@@ -8,6 +8,7 @@ AudioDecoder::AudioDecoder(int index, AVFormatContext *ftx): BaseDecoder(index, 
 
 AudioDecoder::~AudioDecoder() {
     LOGI("~AudioDecoder")
+    release();
 }
 
 bool AudioDecoder::prepare() {
@@ -72,41 +73,50 @@ int AudioDecoder::decode(AVPacket *avPacket) {
     int64_t start = getCurrentTimeMs();
     int sendRes = avcodec_send_packet(mCodecContext, avPacket);
     int index = av_index_search_timestamp(mFtx->streams[getStreamIndex()], avPacket->pts, AVSEEK_FLAG_BACKWARD);
+    int64_t sendPoint = getCurrentTimeMs() - start;
     LOGI("[audio] avcodec_send_packet...pts: %" PRId64 ", res: %d, index: %d", avPacket->pts, sendRes, index)
 
     // avcodec_send_packet的-11表示要先读output，然后pkt需要重发
     mNeedResent = sendRes == AVERROR(EAGAIN);
 
-    // avcodec_receive_frame的-11，表示需要发新帧
-    int receiveRes = avcodec_receive_frame(mCodecContext, mAvFrame);
-    if (receiveRes != 0) {
-        LOGE("[audio] avcodec_receive_frame err: %d, resent: %d", receiveRes, mNeedResent)
-        av_frame_unref(mAvFrame);
-        return receiveRes;
-    }
-
-    int64_t receivePoint = getCurrentTimeMs() - start;
-    auto ptsMs = mAvFrame->pts * av_q2d(mFtx->streams[getStreamIndex()]->time_base) * 1000;
-    LOGI("[audio] avcodec_receive_frame...pts: %" PRId64 ", time: %f, need retry: %d", mAvFrame->pts, ptsMs, mNeedResent)
-
-    int nb = resample(mAvFrame);
-
-    updateTimestamp(mAvFrame);
-
-    int out_channels = av_get_channel_layout_nb_channels(AV_CH_LAYOUT_STEREO);
-
-    if (nb > 0) {
-        mDataSize = nb * out_channels * av_get_bytes_per_sample(AV_SAMPLE_FMT_S16);
-        if (mOnFrameArrivedListener != nullptr) {
-            mOnFrameArrivedListener(mAvFrame);
+    int receiveRes = AVERROR_EOF;
+    int receiveCount = 0;
+    do {
+        start = getCurrentTimeMs();
+        // avcodec_receive_frame的-11，表示需要发新帧
+        receiveRes = avcodec_receive_frame(mCodecContext, mAvFrame);
+        if (receiveRes != 0) {
+            LOGE("[audio] avcodec_receive_frame err: %d, resent: %d", receiveRes, mNeedResent)
+            av_frame_unref(mAvFrame);
+            break;
         }
-    }
-    mDataSize = 0;
-    mNeedFlushRender = false;
-    LOGI("swr_convert, dataSize: %d, nb: %d, out_channels: %d", mDataSize, nb, out_channels)
 
-    LOGW("[audio] decode consume: %" PRId64, receivePoint)
-    return 0;
+        int64_t receivePoint = getCurrentTimeMs() - start;
+        auto ptsMs = mAvFrame->pts * av_q2d(mFtx->streams[getStreamIndex()]->time_base) * 1000;
+        LOGI("[audio] avcodec_receive_frame...pts: %" PRId64 ", time: %f, need retry: %d", mAvFrame->pts, ptsMs, mNeedResent)
+
+        int nb = resample(mAvFrame);
+
+        updateTimestamp(mAvFrame);
+
+        int out_channels = av_get_channel_layout_nb_channels(AV_CH_LAYOUT_STEREO);
+
+        if (nb > 0) {
+            mDataSize = nb * out_channels * av_get_bytes_per_sample(AV_SAMPLE_FMT_S16);
+            if (mOnFrameArrivedListener != nullptr) {
+                mOnFrameArrivedListener(mAvFrame);
+            }
+        }
+        mDataSize = 0;
+        mNeedFlushRender = false;
+        LOGI("swr_convert, dataSize: %d, nb: %d, out_channels: %d", mDataSize, nb, out_channels)
+
+        av_frame_unref(mAvFrame);
+        receiveCount++;
+
+        LOGW("[audio] decode sendPoint: %" PRId64 ", receivePoint: %" PRId64 ", receiveCount: %d", sendPoint, receivePoint, receiveCount)
+    } while (true);
+    return receiveRes;
 }
 
 int AudioDecoder::resample(AVFrame *frame) {

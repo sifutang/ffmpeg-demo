@@ -11,15 +11,17 @@ import com.xyq.libbase.player.IPlayer
 import com.xyq.libbase.player.IPlayerListener
 import java.nio.ByteBuffer
 
-
 class ImagePlayer: IPlayer {
 
-    private var mBitmap: Bitmap? = null
     private var mListener: IPlayerListener? = null
     private var mRotate = 0
+    private var mRgbaBuffer: ByteBuffer? = null
+    private var mWidth = 0
+    private var mHeight = 0
 
     companion object {
         private const val TAG = "ImagePlayer"
+        private const val FORMAT_RGBA = 0x02
     }
 
     override fun init() {
@@ -31,19 +33,37 @@ class ImagePlayer: IPlayer {
     }
 
     override fun prepare(path: String, surface: Surface?) {
-        if (mBitmap?.isRecycled == false) {
-            mBitmap?.recycle()
+        var colorSpace: ColorSpace? = null
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val options = BitmapFactory.Options()
+            options.inJustDecodeBounds = true
+            BitmapFactory.decodeFile(path, options)
+            colorSpace = options.outColorSpace
+            colorSpace?.let {
+                Log.i(TAG, "prepare: get color space: ${it.name}")
+            }
         }
+
         val options = BitmapFactory.Options()
         options.inPreferredConfig = Bitmap.Config.ARGB_8888
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            options.inPreferredColorSpace = ColorSpace.get(ColorSpace.Named.SRGB)
+        colorSpace?.let {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && it != ColorSpace.get(ColorSpace.Named.SRGB)) {
+                options.inPreferredColorSpace = ColorSpace.get(ColorSpace.Named.SRGB)
+                Log.i(TAG, "prepare: inPreferredColorSpace s-rgb")
+            }
         }
-        val bitmap = BitmapFactory.decodeFile(path, options) ?: throw RuntimeException("bitmap is null")
-        mBitmap = bitmap
+        val bitmap = BitmapFactory.decodeFile(path, options)
+        if (bitmap == null) {
+            Log.e(TAG, "prepare: decodeFile failed")
+            return
+        }
 
-        mListener?.onVideoTrackPrepared(bitmap.width, bitmap.height)
+        mWidth = bitmap.width
+        mHeight = bitmap.height
         mRotate = getImageOrientation(path)
+        mRgbaBuffer = bitmapToByteBuffer(bitmap)
+        mListener?.onVideoTrackPrepared(mWidth, mHeight)
+        bitmap.recycle()
     }
 
     private fun getImageOrientation(imagePath: String): Int {
@@ -65,9 +85,11 @@ class ImagePlayer: IPlayer {
 
     override fun start() {
         Log.i(TAG, "start: ")
-        val rgbaBuffer = bitmapToByteBuffer(mBitmap!!)
-        mListener?.onVideoFrameArrived(mBitmap!!.width, mBitmap!!.height, 0x02, rgbaBuffer.array(), null, null) // 0x02 is RGBA
-        mListener?.onPlayComplete()
+        mRgbaBuffer?.let {
+            it.rewind()
+            mListener?.onVideoFrameArrived(mWidth, mHeight, FORMAT_RGBA, it.array(), null, null)
+            mListener?.onPlayComplete()
+        }
     }
 
     private fun bitmapToByteBuffer(bitmap: Bitmap): ByteBuffer {
@@ -92,9 +114,6 @@ class ImagePlayer: IPlayer {
 
     override fun release() {
         Log.i(TAG, "release: ")
-        if (mBitmap?.isRecycled == false) {
-            mBitmap?.recycle()
-        }
     }
 
     override fun seek(position: Double): Boolean {

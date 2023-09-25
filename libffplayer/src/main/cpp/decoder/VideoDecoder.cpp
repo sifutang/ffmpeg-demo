@@ -149,6 +149,7 @@ int VideoDecoder::decode(AVPacket *avPacket) {
     // 主动塞到队列中的flush帧
     bool isEof = avPacket->size == 0 && avPacket->data == nullptr;
     int sendRes = avcodec_send_packet(mCodecContext, avPacket);
+    int64_t sendPoint = getCurrentTimeMs() - start;
 
     bool isKeyFrame = avPacket->flags & AV_PKT_FLAG_KEY;
     LOGI("[video] avcodec_send_packet...pts: %" PRId64 ", dts: %" PRId64 ", isKeyFrame: %d, res: %d, isEof: %d", avPacket->pts, avPacket->dts, isKeyFrame, sendRes, isEof)
@@ -156,72 +157,77 @@ int VideoDecoder::decode(AVPacket *avPacket) {
     // avcodec_send_packet的-11表示要先读output，然后pkt需要重发
     mNeedResent = sendRes == AVERROR(EAGAIN);
 
-    // avcodec_receive_frame的-11，表示需要发新帧
-    int receiveRes = avcodec_receive_frame(mCodecContext, mAvFrame);
+    int receiveRes = AVERROR_EOF;
+    int receiveCount = 0;
+    do {
+        start = getCurrentTimeMs();
+        // avcodec_receive_frame的-11，表示需要发新帧
+        receiveRes = avcodec_receive_frame(mCodecContext, mAvFrame);
 
-    if (isEof && receiveRes != AVERROR_EOF && mRetryReceiveCount >= 0) {
-        mNeedResent = true;
-        mRetryReceiveCount--;
-        LOGE("[video] send eof, not receive eof...retry count: %" PRId64, mRetryReceiveCount)
-    }
-
-    if (receiveRes != 0) {
-        LOGE("[video] avcodec_receive_frame err: %d, resent: %d, retry count: %" PRId64, receiveRes, mNeedResent, mRetryReceiveCount)
-        av_frame_unref(mAvFrame);
-        // decode and receive frame arrived EOF
-        if (isEof && receiveRes == AVERROR_EOF) {
-            mRetryReceiveCount = RETRY_RECEIVE_COUNT;
+        if (isEof && receiveRes != AVERROR_EOF && mRetryReceiveCount >= 0) {
+            mNeedResent = true;
+            mRetryReceiveCount--;
+            LOGE("[video] send eof, not receive eof...retry count: %" PRId64, mRetryReceiveCount)
         }
-        // force EOF
-        if (isEof && mRetryReceiveCount < 0) {
-            receiveRes = AVERROR_EOF;
-            mRetryReceiveCount = RETRY_RECEIVE_COUNT;
-            mNeedResent = false;
-        }
-        return receiveRes;
-    }
 
-    auto ptsMs = mAvFrame->pts * av_q2d(mFtx->streams[getStreamIndex()]->time_base) * 1000;
-    LOGI("[video] avcodec_receive_frame...pts: %" PRId64 ", time: %f, format: %d, need retry: %d", mAvFrame->pts, ptsMs, mAvFrame->format, mNeedResent)
-    int64_t receivePoint = getCurrentTimeMs() - start;
-
-    updateTimestamp(mAvFrame);
-
-    if (mAvFrame->pts >= mSeekPos) {
-        mSeekPos = INT64_MAX;
-        mSeekEndTimeMs = getCurrentTimeMs();
-        int64_t precisionSeekConsume = mSeekEndTimeMs - mSeekStartTimeMs;
-        LOGE("[video] avcodec_receive_frame...pts: %" PRId64 ", precision seek consume: %" PRId64, mAvFrame->pts, precisionSeekConsume)
-    }
-
-    bool isEvenEdge = isEven(mAvFrame->width) && isEven(mAvFrame->height);
-    if (mAvFrame->format == hw_pix_fmt || mAvFrame->format == AV_PIX_FMT_RGB24 || (isEvenEdge && (mAvFrame->format == AV_PIX_FMT_YUV420P || mAvFrame->format == AV_PIX_FMT_NV12))) {
-        if (mOnFrameArrivedListener) {
-            mOnFrameArrivedListener(mAvFrame);
-        }
-    } else if (mAvFrame->format != AV_PIX_FMT_NONE) { // mAvFrame->format == AV_PIX_FMT_YUV420P10LE先转为RGBA进行渲染
-        AVFrame *swFrame = av_frame_alloc();
-        int size = av_image_get_buffer_size(AV_PIX_FMT_RGBA, mAvFrame->width, mAvFrame->height, 1);
-        auto *buffer = static_cast<uint8_t *>(av_malloc(size * sizeof(uint8_t)));
-        av_image_fill_arrays(swFrame->data, swFrame->linesize, buffer, AV_PIX_FMT_RGBA, mAvFrame->width, mAvFrame->height, 1);
-
-        if (swsScale(mAvFrame, swFrame) > 0) {
-            if (mOnFrameArrivedListener) {
-                mOnFrameArrivedListener(swFrame);
+        if (receiveRes != 0) {
+            LOGE("[video] avcodec_receive_frame err: %d, resent: %d, retry count: %" PRId64, receiveRes, mNeedResent, mRetryReceiveCount)
+            av_frame_unref(mAvFrame);
+            // decode and receive frame arrived EOF
+            if (isEof && receiveRes == AVERROR_EOF) {
+                mRetryReceiveCount = RETRY_RECEIVE_COUNT;
             }
+            // force EOF
+            if (isEof && mRetryReceiveCount < 0) {
+                receiveRes = AVERROR_EOF;
+                mRetryReceiveCount = RETRY_RECEIVE_COUNT;
+                mNeedResent = false;
+            }
+            break;
         }
 
-        av_frame_free(&swFrame);
-        av_freep(&swFrame);
-        av_free(buffer);
-    } else {
-        LOGE("[video] frame format is AV_PIX_FMT_NONE")
-    }
+        auto ptsMs = mAvFrame->pts * av_q2d(mFtx->streams[getStreamIndex()]->time_base) * 1000;
+        LOGI("[video] avcodec_receive_frame...pts: %" PRId64 ", time: %f, format: %d, need retry: %d", mAvFrame->pts, ptsMs, mAvFrame->format, mNeedResent)
+        int64_t receivePoint = getCurrentTimeMs() - start;
 
-    av_frame_unref(mAvFrame);
+        updateTimestamp(mAvFrame);
 
-    LOGW("[video] decode consume: %" PRId64, receivePoint)
+        if (mAvFrame->pts >= mSeekPos) {
+            mSeekPos = INT64_MAX;
+            mSeekEndTimeMs = getCurrentTimeMs();
+            int64_t precisionSeekConsume = mSeekEndTimeMs - mSeekStartTimeMs;
+            LOGE("[video] avcodec_receive_frame...pts: %" PRId64 ", precision seek consume: %" PRId64, mAvFrame->pts, precisionSeekConsume)
+        }
 
+        bool isEvenEdge = isEven(mAvFrame->width) && isEven(mAvFrame->height);
+        if (mAvFrame->format == hw_pix_fmt || mAvFrame->format == AV_PIX_FMT_RGB24 || (isEvenEdge && (mAvFrame->format == AV_PIX_FMT_YUV420P || mAvFrame->format == AV_PIX_FMT_NV12))) {
+            if (mOnFrameArrivedListener) {
+                mOnFrameArrivedListener(mAvFrame);
+            }
+        } else if (mAvFrame->format != AV_PIX_FMT_NONE) { // mAvFrame->format == AV_PIX_FMT_YUV420P10LE先转为RGBA进行渲染
+            AVFrame *swFrame = av_frame_alloc();
+            int size = av_image_get_buffer_size(AV_PIX_FMT_RGBA, mAvFrame->width, mAvFrame->height, 1);
+            auto *buffer = static_cast<uint8_t *>(av_malloc(size * sizeof(uint8_t)));
+            av_image_fill_arrays(swFrame->data, swFrame->linesize, buffer, AV_PIX_FMT_RGBA, mAvFrame->width, mAvFrame->height, 1);
+
+            if (swsScale(mAvFrame, swFrame) > 0) {
+                if (mOnFrameArrivedListener) {
+                    mOnFrameArrivedListener(swFrame);
+                }
+            }
+
+            av_frame_free(&swFrame);
+            av_freep(&swFrame);
+            av_free(buffer);
+        } else {
+            LOGE("[video] frame format is AV_PIX_FMT_NONE")
+        }
+
+        av_frame_unref(mAvFrame);
+        receiveCount++;
+
+        LOGW("[video] decode sendPoint: %" PRId64 ", receivePoint: %" PRId64 ", receiveCount: %d", sendPoint, receivePoint, receiveCount)
+    } while (true);
     return receiveRes;
 }
 

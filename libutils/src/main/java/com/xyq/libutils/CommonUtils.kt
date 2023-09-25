@@ -1,10 +1,23 @@
 package com.xyq.libutils
 
 import android.content.Context
-import android.graphics.*
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.Paint
+import android.graphics.Typeface
+import android.util.DisplayMetrics
+import android.view.WindowManager
 import kotlin.math.abs
 
 object CommonUtils {
+
+    fun getScreenWidth(context: Context): Int {
+        val wm = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
+        val outMetrics = DisplayMetrics()
+        wm.defaultDisplay.getMetrics(outMetrics)
+        return outMetrics.widthPixels
+    }
 
     fun clamp(lower: Float, upper: Float, cur: Float): Float {
         return if (cur < lower) {

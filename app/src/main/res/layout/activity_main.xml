@@ -63,7 +63,7 @@
         app:layout_constraintRight_toRightOf="parent"
         />
 
-    <LinearLayout
+    <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/video_thumbnails"
         android:orientation="horizontal"
         android:layout_width="match_parent"
@@ -72,7 +72,7 @@
         app:layout_constraintBottom_toTopOf="@+id/seek_bar"
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintRight_toRightOf="parent">
-    </LinearLayout>
+    </androidx.recyclerview.widget.RecyclerView>
 
     <TextView
         android:id="@+id/btn_player"

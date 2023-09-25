@@ -100,14 +100,21 @@ bool FFMpegPlayer::prepare(JNIEnv *env, std::string &path, jobject surface) {
     if (audioIndex >= 0) {
         LOGI("select audio stream, index: %d", audioIndex)
         mAudioDecoder = std::make_shared<AudioDecoder>(audioIndex, mFtx);
-        mAudioPacketQueue = std::make_shared<AVPacketQueue>(50);
-        mAudioThread = new std::thread(&FFMpegPlayer::AudioDecodeLoop, this);
-        mAudioDecoder->setErrorMsgListener([](int err, std::string &msg) {
-            LOGE("[audio] err code: %d, msg: %s", err, msg.c_str())
-        });
         audioPrePared = mAudioDecoder->prepare();
-        if (mPlayerJni.isValid()) {
-            env->CallVoidMethod(mPlayerJni.instance, mPlayerJni.onAudioPrepared);
+        if (audioPrePared) {
+            mAudioPacketQueue = std::make_shared<AVPacketQueue>(50);
+            mAudioThread = new std::thread(&FFMpegPlayer::AudioDecodeLoop, this);
+            mAudioDecoder->setErrorMsgListener([](int err, std::string &msg) {
+                LOGE("[audio] err code: %d, msg: %s", err, msg.c_str())
+            });
+            if (mPlayerJni.isValid()) {
+                env->CallVoidMethod(mPlayerJni.instance, mPlayerJni.onAudioPrepared);
+            }
+        } else {
+            mAudioDecoder = nullptr;
+            mAudioPacketQueue = nullptr;
+            mAudioThread = nullptr;
+            LOGE("audio track prepared failed!!!")
         }
     }
     bool prepared = videoPrepared || audioPrePared;

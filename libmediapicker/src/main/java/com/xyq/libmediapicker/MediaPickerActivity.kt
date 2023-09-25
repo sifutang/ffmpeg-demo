@@ -2,6 +2,7 @@ package com.xyq.libmediapicker
 
 import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
 import android.os.Bundle
@@ -11,6 +12,8 @@ import android.widget.ImageView
 import android.widget.ListPopupWindow
 import android.widget.TextView
 import androidx.activity.OnBackPressedCallback
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
 import androidx.loader.app.LoaderManager
 import androidx.recyclerview.widget.GridLayoutManager
@@ -27,10 +30,12 @@ import com.xyq.libmediapicker.data.VideoLoader
 import com.xyq.libmediapicker.entity.Folder
 import com.xyq.libmediapicker.entity.Media
 import com.xyq.libmediapicker.utils.ScreenUtils
-import pub.devrel.easypermissions.AfterPermissionGranted
-import pub.devrel.easypermissions.EasyPermissions
 
 class MediaPickerActivity: FragmentActivity(), MediaDataCallback, View.OnClickListener  {
+
+    companion object {
+        private const val REQUEST_CODE_PERMISSIONS = 100
+    }
 
     private lateinit var argsIntent: Intent
     private lateinit var folderPopupWindow: ListPopupWindow
@@ -80,12 +85,11 @@ class MediaPickerActivity: FragmentActivity(), MediaDataCallback, View.OnClickLi
         super.onDestroy()
     }
 
-    override fun onRequestPermissionsResult(
-        requestCode: Int,
-        permissions: Array<out String>,
-        grantResults: IntArray) {
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        EasyPermissions.onRequestPermissionsResult(requestCode, permissions, grantResults, this)
+        if (requestCode == REQUEST_CODE_PERMISSIONS && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+            loadMedaData()
+        }
     }
 
     private fun setTitleBar() {
@@ -135,9 +139,8 @@ class MediaPickerActivity: FragmentActivity(), MediaDataCallback, View.OnClickLi
         }
     }
 
-    @AfterPermissionGranted(119)
     private fun loadMedaData() {
-        if (EasyPermissions.hasPermissions(this, Manifest.permission.READ_EXTERNAL_STORAGE)) {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED) {
             when (val type = argsIntent.getIntExtra(PickerConfig.SELECT_MODE, PickerConfig.PICKER_VIDEO)) {
                 PickerConfig.PICKER_IMAGE_VIDEO -> {
                     LoaderManager.getInstance(this).initLoader(type, null, MediaLoader(this, this))
@@ -150,7 +153,7 @@ class MediaPickerActivity: FragmentActivity(), MediaDataCallback, View.OnClickLi
                 }
             }
         } else {
-            EasyPermissions.requestPermissions(this, getString(R.string.READ_EXTERNAL_STORAGE), 119, Manifest.permission.READ_EXTERNAL_STORAGE)
+            ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE), REQUEST_CODE_PERMISSIONS)
         }
     }
 

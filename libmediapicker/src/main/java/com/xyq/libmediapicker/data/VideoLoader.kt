@@ -10,6 +10,7 @@ import androidx.loader.content.Loader
 import com.xyq.libmediapicker.R
 import com.xyq.libmediapicker.entity.Folder
 import com.xyq.libmediapicker.entity.Media
+import java.io.File
 
 class VideoLoader(private val context: Context,
                   private val loaderCallback: MediaDataCallback): BaseLoader() {
@@ -44,7 +45,7 @@ class VideoLoader(private val context: Context,
                 it.moveToPosition(-1)
                 while (it.moveToNext()) {
                     val path = it.getString(it.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DATA))
-                    if (path.isNullOrEmpty()) {
+                    if (path.isNullOrEmpty() || !File(path).exists()) {
                         continue
                     }
                     val name = it.getString(it.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DISPLAY_NAME))

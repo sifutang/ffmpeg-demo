@@ -1,4 +1,4 @@
-package com.xyq.ffmpegdemo.model
+package com.xyq.ffmpegdemo.viewmodel
 
 import android.util.Log
 import androidx.lifecycle.MutableLiveData
@@ -13,9 +13,11 @@ class VideoThumbnailViewModel: ViewModel() {
         private const val TAG = "VideoThumbnailViewModel"
     }
 
-    val mLiveData = MutableLiveData<VideoThumbnailModel>()
+    private val mLiveData = MutableLiveData<VideoThumbnailModel>()
 
     private var mVideoPath = ""
+
+    fun getData() = mLiveData
 
     /**
      * @param path video path

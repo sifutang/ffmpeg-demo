@@ -1,34 +1,30 @@
 package com.xyq.ffmpegdemo
 
 import android.Manifest
-import android.app.ActionBar.LayoutParams
-import android.content.ContentValues
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.graphics.Bitmap
-import android.os.*
-import android.provider.MediaStore
+import android.os.Bundle
+import android.os.Environment
 import android.util.Log
 import android.view.MotionEvent
 import android.view.View
-import android.widget.ImageView
-import android.widget.LinearLayout
 import android.widget.SeekBar
 import android.widget.Toast
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.res.ResourcesCompat
-import androidx.core.graphics.BitmapCompat
 import androidx.lifecycle.ViewModelProvider
+import androidx.recyclerview.widget.LinearLayoutManager
+import com.xyq.ffmpegdemo.adapter.ThumbnailAdapter
 import com.xyq.ffmpegdemo.databinding.ActivityMainBinding
-import com.xyq.ffmpegdemo.model.ButtonItemModel
-import com.xyq.ffmpegdemo.model.ButtonItemViewModel
-import com.xyq.ffmpegdemo.model.VideoThumbnailViewModel
+import com.xyq.ffmpegdemo.entity.Thumbnail
 import com.xyq.ffmpegdemo.player.IMediaPlayer
 import com.xyq.ffmpegdemo.player.IMediaPlayerStatusListener
 import com.xyq.ffmpegdemo.player.MyPlayer
 import com.xyq.ffmpegdemo.player.PlayerConfig
+import com.xyq.ffmpegdemo.viewmodel.PlayViewModel
+import com.xyq.ffmpegdemo.viewmodel.VideoThumbnailViewModel
 import com.xyq.libffplayer.utils.FFMpegUtils
 import com.xyq.libmediapicker.MediaPickerActivity
 import com.xyq.libmediapicker.PickerConfig
@@ -36,16 +32,13 @@ import com.xyq.libmediapicker.entity.Media
 import com.xyq.librender.filter.GreyFilter
 import com.xyq.libutils.CommonUtils
 import com.xyq.libutils.FileUtils
-import com.xyq.libutils.TraceUtils
-import java.io.File
-import java.io.OutputStream
 import java.util.concurrent.Executors
+
 
 class MainActivity : AppCompatActivity() {
 
     companion object {
         private const val TAG = "MainActivity"
-        private const val VIDEO_THUMBNAIL_SIZE = 5
     }
 
     private lateinit var mBinding: ActivityMainBinding
@@ -54,15 +47,14 @@ class MainActivity : AppCompatActivity() {
     private var mIsVideo = true
 
     private var mVideoPathForThumbnail = ""
-    private var mThumbnailViews = ArrayList<ImageView>()
-
     private var mHasPermission = false
     private var mIsSeeking = false
     private var mIsExporting = false
     private var mDuration = -1.0
+    private var mThumbnailAdapter: ThumbnailAdapter? = null
 
     private lateinit var mVideoThumbnailViewModel: VideoThumbnailViewModel
-    private lateinit var mBtnViewModel: ButtonItemViewModel
+    private lateinit var mPlayViewModel: PlayViewModel
 
     private var mExecutors = Executors.newFixedThreadPool(2)
 
@@ -81,16 +73,15 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        TraceUtils.beginSection("MainActivity#onCreate")
         Log.i(TAG, "onCreate: ")
         mBinding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(mBinding.root)
+        mPlayer = MyPlayer(applicationContext, mBinding.glSurfaceView)
 
         initViews()
         initViewModels()
 
         mHasPermission = checkPermission()
-        mPlayer = MyPlayer(applicationContext, mBinding.glSurfaceView)
 
         // preload video thumbnail
         mMediaFilePath = getDemoVideoPath()
@@ -98,37 +89,29 @@ class MainActivity : AppCompatActivity() {
 
         val text = CommonUtils.generateTextBitmap("雪月清的随笔", 16f, applicationContext)
         mBinding.ivWatermark.setImageBitmap(text)
-
-        TraceUtils.endSection()
     }
 
     override fun onResume() {
-        TraceUtils.beginSection("MainActivity#onResume")
         Log.i(TAG, "onResume: filepath: $mMediaFilePath, isVideo: $mIsVideo")
         super.onResume()
         if (mHasPermission) {
             checkMediaFileValid(mMediaFilePath, mIsVideo)
             startPlay(mMediaFilePath, mIsVideo)
         }
-        TraceUtils.endSection()
     }
 
     override fun onPause() {
-        TraceUtils.beginSection("MainActivity#onPause")
         Log.i(TAG, "onPause: ")
         super.onPause()
         stopPlay()
-        TraceUtils.endSection()
     }
 
     override fun onDestroy() {
-        TraceUtils.beginSection("MainActivity#onDestroy")
         Log.i(TAG, "onDestroy: ")
         mIsExporting = false
         super.onDestroy()
         mPlayer.release()
         mExecutors.shutdown()
-        TraceUtils.endSection()
     }
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
@@ -155,15 +138,11 @@ class MainActivity : AppCompatActivity() {
 
     private fun initViews() {
         Log.i(TAG, "initViews: ")
-        mThumbnailViews.clear()
-        for (i in 1..VIDEO_THUMBNAIL_SIZE) {
-            val imageView = ImageView(this)
-            imageView.scaleType = ImageView.ScaleType.CENTER_CROP
-            val layoutParams = LinearLayout.LayoutParams(0, LayoutParams.MATCH_PARENT, 1f)
-            imageView.layoutParams = layoutParams
-            mBinding.videoThumbnails.addView(imageView)
-            mThumbnailViews.add(imageView)
-        }
+
+        val layoutManager = LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
+        mBinding.videoThumbnails.layoutManager = layoutManager
+        mThumbnailAdapter = ThumbnailAdapter(this, ArrayList())
+        mBinding.videoThumbnails.adapter = mThumbnailAdapter
 
         mBinding.seekBar.isEnabled = false
         mBinding.seekBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
@@ -190,30 +169,13 @@ class MainActivity : AppCompatActivity() {
         })
 
         mBinding.btnPlayer.setOnClickListener {
-            mBtnViewModel.mPlayLiveData.value?.let {
-                if (!it.isSelected) {
-                    mBtnViewModel.mPlayLiveData.value = ButtonItemModel(R.drawable.play_pause, true)
-                    mPlayer.pause()
-                } else {
-                    mBtnViewModel.mPlayLiveData.value = ButtonItemModel(R.drawable.play_resume, false)
-                    if (mPlayer.isPlayComplete()) {
-                        mPlayer.seek(0.0)
-                    }
-                    mPlayer.resume()
-                }
-            }
+            val start = mPlayViewModel.isPlaying()
+            mPlayViewModel.updatePlayState(!start)
         }
 
         mBinding.btnAudio.setOnClickListener {
-            mBtnViewModel.mMuteLiveData.value?.let {
-                if (!it.isSelected) {
-                    mBtnViewModel.mMuteLiveData.value = ButtonItemModel(R.drawable.audio_disable, true)
-                    mPlayer.setMute(true)
-                } else {
-                    mBtnViewModel.mMuteLiveData.value = ButtonItemModel(R.drawable.audio_enable, false)
-                    mPlayer.setMute(false)
-                }
-            }
+            val isMute = mPlayViewModel.isMute()
+            mPlayViewModel.updateMuteState(!isMute)
         }
 
         mBinding.btnImport.setOnClickListener {
@@ -244,27 +206,21 @@ class MainActivity : AppCompatActivity() {
         Log.i(TAG, "initViewModels: ")
         // video thumbnail
         mVideoThumbnailViewModel = ViewModelProvider(this)[VideoThumbnailViewModel::class.java]
-        mVideoThumbnailViewModel.mLiveData.observe(this) {
-            Log.i(TAG, "Receive VideoThumbnailViewModel: $it")
-            if (it.index < mThumbnailViews.size) {
-                if (it.isValid()) {
-                    mThumbnailViews[it.index].visibility = View.VISIBLE
-                    mThumbnailViews[it.index].setImageBitmap(it.getBitmap())
-                } else {
-                    mThumbnailViews[it.index].visibility = View.INVISIBLE
+        mVideoThumbnailViewModel.getData().observe(this) { model ->
+            Log.i(TAG, "Receive VideoThumbnailViewModel: $model")
+            if (model.isValid()) {
+                model.getBitmap()?.let {
+                    mThumbnailAdapter?.addData(Thumbnail(it, model.index))
                 }
             }
         }
 
-        mBtnViewModel = ViewModelProvider(this)[ButtonItemViewModel::class.java]
-        // play btn
-        mBtnViewModel.mPlayLiveData.observe(this) {
-            mBinding.btnPlayer.background = ResourcesCompat.getDrawable(resources, it.backgroundResId, null)
+        mPlayViewModel = PlayViewModel(mPlayer as MyPlayer)
+        mPlayViewModel.getPlayState().observe(this) {
+            mBinding.btnPlayer.background = ResourcesCompat.getDrawable(resources, it, null)
         }
-
-        // audio mute btn
-        mBtnViewModel.mMuteLiveData.observe(this) {
-            mBinding.btnAudio.background = ResourcesCompat.getDrawable(resources, it.backgroundResId, null)
+        mPlayViewModel.getMuteState().observe(this) {
+            mBinding.btnAudio.background = ResourcesCompat.getDrawable(resources, it, null)
         }
     }
 
@@ -287,8 +243,8 @@ class MainActivity : AppCompatActivity() {
         mBinding.seekBar.isEnabled = true
         mBinding.seekBar.progress = 0
 
-        mBtnViewModel.mPlayLiveData.value = ButtonItemModel(R.drawable.play_resume, false)
-        mBtnViewModel.mMuteLiveData.value = ButtonItemModel(R.drawable.audio_enable, false)
+        mPlayViewModel.updateMuteState(false)
+        mPlayViewModel.updatePlayState(true)
 
         mExecutors.submit {
             Log.i(TAG, "startPlay: start")
@@ -316,7 +272,7 @@ class MainActivity : AppCompatActivity() {
                 override fun onComplete() {
                     runOnUiThread {
                         mBinding.seekBar.progress = 100
-                        mBtnViewModel.mPlayLiveData.value = ButtonItemModel(R.drawable.play_pause, true)
+                        mPlayViewModel.updatePlayState(false)
                     }
                 }
 
@@ -337,15 +293,11 @@ class MainActivity : AppCompatActivity() {
         }
         mVideoPathForThumbnail = path
 
-        var width = mThumbnailViews[0].width
-        width = if (width <= 0) 300 else width
-
+        val width = CommonUtils.getScreenWidth(this) / 5
         mExecutors.submit {
-            mVideoThumbnailViewModel.loadThumbnail(path, width, 0, mThumbnailViews.size, false) {
-                TraceUtils.beginAsyncSection("fetchVideoThumbnail", it.index)
+            mVideoThumbnailViewModel.loadThumbnail(path, width, 0, 5, false) {
                 runOnUiThread {
-                    mVideoThumbnailViewModel.mLiveData.value = it
-                    TraceUtils.endAsyncSection("fetchVideoThumbnail", it.index)
+                    mVideoThumbnailViewModel.getData().value = it
                 }
                 return@loadThumbnail true
             }
@@ -365,10 +317,11 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun checkMediaFileValid(path: String, isVideo: Boolean) {
-        if (File(path).exists()) {
+        if (FileUtils.fileExists(path)) {
             mMediaFilePath = path
             mIsVideo = isVideo
         } else {
+            Log.e(TAG, "checkMediaFileValid: $path is not exists")
             mMediaFilePath = getDemoVideoPath()
             mIsVideo = true
             runOnUiThread {
@@ -378,18 +331,14 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun exportGif() {
-        TraceUtils.beginSection("delete pre-gif")
-        val gifPath = "/storage/emulated/0/DCIM/Camera/export.gif"
-        FileUtils.deleteFile(gifPath)
-        TraceUtils.endSection()
-
-        TraceUtils.beginSection("exportGif")
         val start = System.currentTimeMillis()
+        val dir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM)
+        val gifPath = "${dir}/Camera/export_${System.currentTimeMillis()}.gif"
+
         Log.i(TAG, "exportGif start: $gifPath")
         FFMpegUtils.exportGif(mMediaFilePath, gifPath)
         val consume = System.currentTimeMillis() - start
         Log.i(TAG, "exportGif end, consume: ${consume}ms")
-        TraceUtils.endSection()
 
         runOnUiThread {
             mIsExporting = false
@@ -400,24 +349,11 @@ class MainActivity : AppCompatActivity() {
     private fun exportImage() {
         val start = System.currentTimeMillis()
         (mPlayer as MyPlayer).getCurrentImage { frameBuffer ->
-            if (frameBuffer == null) {
-                Log.e(TAG, "exportImage: failed")
-            } else {
+            if (frameBuffer != null) {
                 val displayName = "export_image_${System.currentTimeMillis()}"
-                val values = ContentValues().apply {
-                    put(MediaStore.Images.Media.DISPLAY_NAME, displayName)
-                    put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
-                }
-                val uri = contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
-                uri?.let {
-                    try {
-                        val outputStream = contentResolver.openOutputStream(it)
-                        frameBuffer.toBitmap().compress(Bitmap.CompressFormat.JPEG, 100, outputStream)
-                        outputStream?.close()
-                    } catch (e: Exception) {
-                        e.printStackTrace()
-                    }
-                }
+                FileUtils.saveBitmapToLocal(contentResolver, frameBuffer.toBitmap(), displayName)
+            } else {
+                Log.e(TAG, "exportImage: failed")
             }
             val consume = System.currentTimeMillis() - start
             runOnUiThread {

@@ -13,7 +13,6 @@ import com.xyq.librender.filter.IFilter
 import com.xyq.librender.model.FrameBuffer
 import com.xyq.librender.model.Pipeline
 import com.xyq.librender.utils.OpenGLTools
-import java.nio.ByteBuffer
 
 class RenderManager(private val mContext: Context) {
 

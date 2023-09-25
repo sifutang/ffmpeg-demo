@@ -1,4 +1,4 @@
-package com.xyq.ffmpegdemo.model
+package com.xyq.ffmpegdemo.viewmodel
 
 import android.graphics.Bitmap
 import android.graphics.Matrix
