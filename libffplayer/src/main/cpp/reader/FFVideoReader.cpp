@@ -229,10 +229,9 @@ void FFVideoReader::getNextFrame(const std::function<void(AVFrame *)>& frameArri
 }
 
 int FFVideoReader::getRotate(AVStream *stream) {
-    AVDictionaryEntry *tag = nullptr;
-
-    while ((tag = av_dict_get(stream->metadata, "", tag, AV_DICT_IGNORE_SUFFIX))) {
-        LOGW("[video] metadata: %s, %s", tag->key, tag->value)
+    const AVDictionaryEntry *tag = nullptr;
+    while ((tag = av_dict_iterate(stream->metadata, tag))) {
+        LOGI("[video] metadata: %s, %s", tag->key, tag->value)
     }
 
     tag = av_dict_get(stream->metadata, "rotate", nullptr, 0);
