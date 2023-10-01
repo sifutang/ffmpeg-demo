@@ -33,6 +33,7 @@ bool FFMpegPlayer::prepare(JNIEnv *env, std::string &path, jobject surface) {
     if (mJvm == nullptr) {
         env->GetJavaVM(&mJvm);
     }
+    // not call, use NDKMediaCodec on ffmpeg6.0,
     av_jni_set_java_vm(mJvm, nullptr);
 
     // step1: alloc format context
