@@ -91,6 +91,9 @@ add_library( # Sets the name of the library.
         ./decoder/AudioDecoder.cpp
 
         ./base/AVPacketQueue.cpp
+        ./base/nativehelper/JNIHelp.h
+        ./base/nativehelper/ScopedUtfChars.h
+        ./base/nativehelper/ScopedPrimitiveArray.h
         ./reader/FFReader.cpp
         ./reader/FFVideoReader.cpp
 

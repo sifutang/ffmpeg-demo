@@ -1,6 +1,7 @@
 #include <jni.h>
 #include "main/FFMpegPlayer.h"
 #include "utils/TraceUtils.h"
+#include "base/nativehelper/ScopedUtfChars.h"
 
 extern "C"
 JNIEXPORT jint JNI_OnLoad(JavaVM* vm, void* reserved) {
@@ -28,14 +29,11 @@ Java_com_xyq_libffplayer_FFPlayer_nativePrepare(JNIEnv *env, jobject thiz, jlong
                                                       jstring path, jobject surface) {
     ATRACE_CALL();
     auto *player = reinterpret_cast<FFMpegPlayer *>(handle);
-    const char *c_path = env->GetStringUTFChars(path, nullptr);
-    std::string s_path = c_path;
+    ScopedUtfChars scopedPath(env, path);
+    std::string s_path = scopedPath.c_str();
     bool result = false;
     if (player) {
         result = player->prepare(env,s_path, surface);
-    }
-    if (c_path != nullptr) {
-        env->ReleaseStringUTFChars(path, c_path);
     }
     return result;
 }

@@ -2,6 +2,8 @@
 #include <memory.h>
 #include "../reader/FFVideoReader.h"
 #include "../writer/FFVideoWriter.h"
+#include "../base/nativehelper/ScopedUtfChars.h"
+#include "../base/nativehelper/ScopedPrimitiveArray.h"
 #include "Logger.h"
 
 extern "C"
@@ -10,8 +12,8 @@ Java_com_xyq_libffplayer_utils_FFMpegUtils_getVideoFramesCore(JNIEnv *env, jobje
                                                              jstring path, jint width, jint height,
                                                              jboolean precise, jobject cb) {
     // path
-    const char *c_path = env->GetStringUTFChars(path, nullptr);
-    std::string s_path = c_path;
+    ScopedUtfChars scopedPath(env, path);
+    std::string s_path = scopedPath.c_str();
 
     // frameAllocator
     jclass jclazz = env->GetObjectClass(thiz);
@@ -55,7 +57,7 @@ Java_com_xyq_libffplayer_utils_FFMpegUtils_getVideoFramesCore(JNIEnv *env, jobje
     LOGI("video size: %dx%d, get frame size: %dx%d", videoWidth, videoHeight, width, height)
 
     auto timestamps = (jdoubleArray)env->CallObjectMethod(cb, onFetchStart, reader->getDuration());
-    jdouble *tsArr = env->GetDoubleArrayElements(timestamps, nullptr);
+    ScopedDoubleArrayRW tsArr(env, timestamps);
     int size = env->GetArrayLength(timestamps);
     LOGI("timestamps size: %d", size)
 
@@ -65,10 +67,8 @@ Java_com_xyq_libffplayer_utils_FFMpegUtils_getVideoFramesCore(JNIEnv *env, jobje
         jobject jByteBuffer = env->CallObjectMethod(thiz, allocateFrame, width, height);
         auto *buffer = (uint8_t *)env->GetDirectBufferAddress(jByteBuffer);
         memset(buffer, 0, width * height * 4);
-
-        auto pts = (int64_t)tsArr[i];
-        reader->getFrame(pts, width, height, buffer, precise);
-        jboolean abort = !env->CallBooleanMethod(cb, onProgress, jByteBuffer, tsArr[i], width, height, rotate, i);
+        reader->getFrame((int64_t)tsArr[i], width, height, buffer, precise);
+        jboolean abort = !env->CallBooleanMethod(cb, onProgress, jByteBuffer, (jdouble)tsArr[i], width, height, rotate, i);
         if (abort) {
             LOGE("onProgress abort")
             break;
@@ -79,22 +79,16 @@ Java_com_xyq_libffplayer_utils_FFMpegUtils_getVideoFramesCore(JNIEnv *env, jobje
     delete reader;
 
     env->CallVoidMethod(cb, onFetchEnd);
-
-    if (c_path != nullptr) {
-        env->ReleaseStringUTFChars(path, c_path);
-    }
-    if (tsArr != nullptr) {
-        env->ReleaseDoubleArrayElements(timestamps, tsArr, 0);
-    }
 }
+
 extern "C"
 JNIEXPORT jboolean JNICALL
 Java_com_xyq_libffplayer_utils_FFMpegUtils_nativeExportGif(JNIEnv *env, jobject thiz,
                                                           jstring video_path, jstring output) {
-    const char *input_path = env->GetStringUTFChars(video_path, nullptr);
-    const char *output_path = env->GetStringUTFChars(output, nullptr);
-    std::string inputPath = input_path;
-    std::string outputPath = output_path;
+    ScopedUtfChars input_path(env, video_path);
+    ScopedUtfChars output_path(env, output);
+    std::string inputPath = input_path.c_str();
+    std::string outputPath = output_path.c_str();
 
     // init reader
     auto reader = std::make_unique<FFVideoReader>();
@@ -131,13 +125,6 @@ Java_com_xyq_libffplayer_utils_FFMpegUtils_nativeExportGif(JNIEnv *env, jobject 
         }
     }
     writer->signalEof();
-
-    if (input_path != nullptr) {
-        env->ReleaseStringUTFChars(video_path, input_path);
-    }
-    if (output_path != nullptr) {
-        env->ReleaseStringUTFChars(output, output_path);
-    }
 
     return true;
 }
