@@ -44,6 +44,10 @@ public:
             env_->ReleaseStringUTFChars(string_, utf_chars_);
         }
     }
+
+    ScopedUtfChars(const ScopedUtfChars&) = delete;
+    void operator=(const ScopedUtfChars&) = delete;
+
     const char* c_str() const {
         return utf_chars_;
     }
@@ -57,8 +61,5 @@ private:
     JNIEnv* env_;
     jstring string_;
     const char* utf_chars_;
-    // Disallow copy and assignment.
-    ScopedUtfChars(const ScopedUtfChars&);
-    void operator=(const ScopedUtfChars&);
 };
 #endif  // SCOPED_UTF_CHARS_H_included
