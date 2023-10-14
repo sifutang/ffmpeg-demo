@@ -9,6 +9,8 @@ import android.util.Log
 import android.view.Surface
 import com.xyq.libbase.player.IPlayer
 import com.xyq.libbase.player.IPlayerListener
+import com.xyq.libhwplayer.utils.MimeTypeHelper
+import com.xyq.libpng.PngReader
 import java.nio.ByteBuffer
 
 class ImagePlayer: IPlayer {
@@ -52,18 +54,31 @@ class ImagePlayer: IPlayer {
                 Log.i(TAG, "prepare: inPreferredColorSpace s-rgb")
             }
         }
+
         val bitmap = BitmapFactory.decodeFile(path, options)
-        if (bitmap == null) {
-            Log.e(TAG, "prepare: decodeFile failed")
+        if (bitmap != null) {
+            mWidth = bitmap.width
+            mHeight = bitmap.height
+            mRotate = getImageOrientation(path)
+            mRgbaBuffer = bitmapToByteBuffer(bitmap)
+            mListener?.onVideoTrackPrepared(mWidth, mHeight, -1.0)
+            bitmap.recycle()
             return
         }
 
-        mWidth = bitmap.width
-        mHeight = bitmap.height
-        mRotate = getImageOrientation(path)
-        mRgbaBuffer = bitmapToByteBuffer(bitmap)
-        mListener?.onVideoTrackPrepared(mWidth, mHeight, -1.0)
-        bitmap.recycle()
+        Log.e(TAG, "prepare: decodeFile failed")
+        if (MimeTypeHelper.isPngFile(path)) {
+            val pngData = PngReader().load(path)
+            if (pngData.isValid()) {
+                mWidth = pngData.width
+                mHeight = pngData.height
+                mRotate = 0
+                mRgbaBuffer = pngData.buffer
+                mListener?.onVideoTrackPrepared(mWidth, mHeight, -1.0)
+            } else {
+                Log.e(TAG, "prepare: use Custom PngReader decode failed")
+            }
+        }
     }
 
     private fun getImageOrientation(imagePath: String): Int {

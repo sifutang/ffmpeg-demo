@@ -1,6 +1,6 @@
 #include "FFVideoReader.h"
-#include "../utils/Logger.h"
-#include "../utils/CommonUtils.h"
+#include "header/Logger.h"
+#include "header/CommonUtils.h"
 #include "../vendor/libyuv/libyuv.h"
 
 extern "C" {

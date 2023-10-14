@@ -3,7 +3,7 @@
 //
 
 #include "FFVideoWriter.h"
-#include "../utils/Logger.h"
+#include "header/Logger.h"
 #include "../utils/FFConverter.h"
 
 FFVideoWriter::FFVideoWriter() {

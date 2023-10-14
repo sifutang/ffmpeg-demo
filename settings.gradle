@@ -13,11 +13,12 @@ dependencyResolutionManagement {
     }
 }
 rootProject.name = "FFMpegDemo"
-include ':app'
 include ':libutils'
+include ':libbase'
+include ':libpng'
 include ':librender'
 include ':libffplayer'
-include ':libbase'
 include ':libhwplayer'
-include ':libmediapicker'
 include ':libcamerakit'
+include ':libmediapicker'
+include ':app'

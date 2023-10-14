@@ -1,7 +1,7 @@
 #include <jni.h>
 #include "main/FFMpegPlayer.h"
 #include "utils/TraceUtils.h"
-#include "base/nativehelper/ScopedUtfChars.h"
+#include "ScopedUtfChars.h"
 
 extern "C"
 JNIEXPORT jint JNI_OnLoad(JavaVM* vm, void* reserved) {

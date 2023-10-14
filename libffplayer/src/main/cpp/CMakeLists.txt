@@ -9,6 +9,7 @@ cmake_minimum_required(VERSION 3.18.1)
 
 project("ffplayer")
 
+message("build ffplayer shared library")
 message("CMAKE_ANDROID_ARCH_ABI: ${CMAKE_ANDROID_ARCH_ABI}")
 
 # ffmpeg
@@ -91,9 +92,7 @@ add_library( # Sets the name of the library.
         ./decoder/AudioDecoder.cpp
 
         ./base/AVPacketQueue.cpp
-        ./base/nativehelper/JNIHelp.h
-        ./base/nativehelper/ScopedUtfChars.h
-        ./base/nativehelper/ScopedPrimitiveArray.h
+
         ./reader/FFReader.cpp
         ./reader/FFVideoReader.cpp
 
@@ -103,9 +102,7 @@ add_library( # Sets the name of the library.
 
         filter/FFFilter.cpp
 
-        utils/Logger.h
         utils/ImageDef.h
-        utils/CommonUtils.h
         utils/FFConverter.h
         utils/FFMpegUtils.cpp
         utils/MutexObj.cpp
@@ -131,6 +128,19 @@ find_library( # Sets the name of the path variable.
 # Specifies libraries CMake should link to your target library. You
 # can link multiple libraries, such as libraries you define in this
 # build script, prebuilt third-party libraries, or system libraries.
+
+get_filename_component(module_main ${CMAKE_SOURCE_DIR} DIRECTORY)
+get_filename_component(module_src ${module_main} DIRECTORY)
+get_filename_component(module_root ${module_src} DIRECTORY)
+get_filename_component(project_root ${module_root} DIRECTORY)
+message("project_root: ${project_root}")
+set(base_utils_header_root ${project_root}/libutils/src/main/cpp)
+
+target_include_directories(ffplayer PRIVATE
+        # base_utils search path
+        ${base_utils_header_root}/jni
+        ${base_utils_header_root}/utils
+        )
 
 target_link_libraries( # Specifies the target library.
         ffplayer

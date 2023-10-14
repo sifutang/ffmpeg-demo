@@ -1,6 +1,6 @@
 #include "AudioDecoder.h"
-#include "../utils/Logger.h"
-#include "../utils/CommonUtils.h"
+#include "header/Logger.h"
+#include "header/CommonUtils.h"
 
 AudioDecoder::AudioDecoder(int index, AVFormatContext *ftx): BaseDecoder(index, ftx) {
     LOGI("AudioDecoder")

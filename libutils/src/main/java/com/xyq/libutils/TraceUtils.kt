@@ -5,7 +5,7 @@ import android.os.Trace
 
 object TraceUtils {
 
-    private val DEBUG = true
+    private val DEBUG = BuildConfig.DEBUG
 
     fun beginSection(sectionName: String) {
         if (DEBUG) {

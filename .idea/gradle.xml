@@ -17,6 +17,7 @@
             <option value="$PROJECT_DIR$/libffplayer" />
             <option value="$PROJECT_DIR$/libhwplayer" />
             <option value="$PROJECT_DIR$/libmediapicker" />
+            <option value="$PROJECT_DIR$/libpng" />
             <option value="$PROJECT_DIR$/librender" />
             <option value="$PROJECT_DIR$/libutils" />
           </set>

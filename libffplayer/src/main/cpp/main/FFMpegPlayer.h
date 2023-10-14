@@ -7,7 +7,7 @@
 #include <ctime>
 #include <thread>
 #include <memory.h>
-#include "../utils/Logger.h"
+#include "header/Logger.h"
 #include "../utils/MutexObj.h"
 #include "../decoder/VideoDecoder.h"
 #include "../decoder/AudioDecoder.h"

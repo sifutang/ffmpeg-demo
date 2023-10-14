@@ -2,9 +2,9 @@
 #include <memory.h>
 #include "../reader/FFVideoReader.h"
 #include "../writer/FFVideoWriter.h"
-#include "../base/nativehelper/ScopedUtfChars.h"
-#include "../base/nativehelper/ScopedPrimitiveArray.h"
-#include "Logger.h"
+#include "header/Logger.h"
+#include "ScopedUtfChars.h"
+#include "ScopedPrimitiveArray.h"
 
 extern "C"
 JNIEXPORT void JNICALL

@@ -2,9 +2,9 @@
 // Created by 雪月清的随笔 on 19/4/23.
 //
 
-#include "TraceUtils.h"
+#include "../utils/TraceUtils.h"
 #include <mutex>
-#include "Logger.h"
+#include "header/Logger.h"
 
 fp_ATrace_beginSection TraceUtils::m_fpATraceBeginSection = nullptr;
 fp_ATrace_endSection TraceUtils::m_fpATraceEndSection = nullptr;

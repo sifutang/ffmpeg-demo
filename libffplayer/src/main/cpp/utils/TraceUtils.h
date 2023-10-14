@@ -10,8 +10,8 @@
 #define FFMPEGDEMO_TRACEUTILS_H
 
 #include <android/trace.h>
-#include <dlfcn.h>
 #include <string>
+#include <dlfcn.h>
 
 #define ENABLE_TRACE true
 

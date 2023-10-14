@@ -1,6 +1,6 @@
 #include "VideoDecoder.h"
-#include "../utils/Logger.h"
-#include "../utils/CommonUtils.h"
+#include "header/Logger.h"
+#include "header/CommonUtils.h"
 #include "../reader/FFVideoReader.h"
 
 static enum AVPixelFormat hw_pix_fmt = AV_PIX_FMT_NONE;
