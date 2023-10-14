@@ -62,8 +62,8 @@ class FFPlayer: IPlayer {
         return nativeGetDuration(mNativePtr)
     }
 
-    private fun onNative_videoTrackPrepared(width: Int, height: Int) {
-        mListener?.onVideoTrackPrepared(width, height)
+    private fun onNative_videoTrackPrepared(width: Int, height: Int, displayRatio: Double) {
+        mListener?.onVideoTrackPrepared(width, height, displayRatio)
     }
 
     private fun onNative_videoFrameArrived(width: Int, height: Int, format: Int, y: ByteArray?, u: ByteArray?, v: ByteArray?) {

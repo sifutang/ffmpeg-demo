@@ -2,7 +2,7 @@ package com.xyq.libbase.player
 
 interface IPlayerListener {
 
-    fun onVideoTrackPrepared(width: Int, height: Int)
+    fun onVideoTrackPrepared(width: Int, height: Int, displayRatio: Double)
 
     fun onAudioTrackPrepared()
 

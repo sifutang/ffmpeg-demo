@@ -92,7 +92,7 @@ class VideoDecoder {
                 val format = mExtractor?.getFormat()
                 val width = format!!.getInteger(MediaFormat.KEY_WIDTH)
                 val height = format.getInteger(MediaFormat.KEY_HEIGHT)
-                mListener?.onVideoTrackPrepared(width, height)
+                mListener?.onVideoTrackPrepared(width, height, -1.0)
 
                 val type = format.getString(MediaFormat.KEY_MIME)
                 type?.let {

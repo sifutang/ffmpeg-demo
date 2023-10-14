@@ -6,7 +6,6 @@ import android.os.Bundle
 import android.util.Log
 import com.xyq.librender.R
 import com.xyq.librender.RenderManager
-import com.xyq.librender.filter.GreyFilter
 import com.xyq.librender.filter.RadiusCornerFilter
 import com.xyq.librender.model.RenderData
 import com.xyq.libutils.FileUtils

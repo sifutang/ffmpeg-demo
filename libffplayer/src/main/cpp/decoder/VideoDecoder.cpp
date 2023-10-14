@@ -361,3 +361,17 @@ int VideoDecoder::getRotate() {
     return FFVideoReader::getRotate(stream);
 }
 
+AVRational VideoDecoder::getDisplayAspectRatio() {
+    AVStream *stream = mFtx->streams[getStreamIndex()];
+    AVRational sar, dar{-1, 1};
+    sar = av_guess_sample_aspect_ratio(mFtx, stream, nullptr);
+    if (sar.num) {
+        AVCodecParameters *params = stream->codecpar;
+        if (av_reduce(&dar.num, &dar.den, params->width * sar.num, params->height * sar.den, 1024 * 1024) > 0) {
+            LOGI("sample_aspect_ratio: %d:%d, display_aspect_ratio: %d:%d", sar.num, sar.den, dar.num, dar.den)
+        }
+    } else {
+        LOGI("sample_aspect_ratio: N/A, display_aspect_ratio: N/A")
+    }
+    return dar;
+}

@@ -62,7 +62,7 @@ class ImagePlayer: IPlayer {
         mHeight = bitmap.height
         mRotate = getImageOrientation(path)
         mRgbaBuffer = bitmapToByteBuffer(bitmap)
-        mListener?.onVideoTrackPrepared(mWidth, mHeight)
+        mListener?.onVideoTrackPrepared(mWidth, mHeight, -1.0)
         bitmap.recycle()
     }
 

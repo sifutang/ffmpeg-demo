@@ -39,4 +39,6 @@ interface IDrawer {
     fun setCanvasSize(size: Size)
 
     fun setRotate(rotate: Int)
+
+    fun setBackgroundColor(r: Float, g: Float, b: Float, a: Float);
 }

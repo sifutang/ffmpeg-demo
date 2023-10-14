@@ -118,6 +118,13 @@ abstract class BaseDrawer(private val mContext: Context) : IDrawer {
         }
     }
 
+    override fun setBackgroundColor(r: Float, g: Float, b: Float, a: Float) {
+        mBackgroundColor[0] = r
+        mBackgroundColor[1] = g
+        mBackgroundColor[2] = b
+        mBackgroundColor[3] = a
+    }
+
     @Synchronized
     override fun pushData(data: RenderData) {
         mRenderData = data

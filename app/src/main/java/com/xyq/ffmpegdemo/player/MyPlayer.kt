@@ -334,9 +334,14 @@ class MyPlayer(private val mContext: Context,
         mVisualizer?.enabled = enable
     }
 
-    override fun onVideoTrackPrepared(width: Int, height: Int) {
-        Log.i(TAG, "onNative_videoTrackPrepared: $width, $height")
-        mRenderManager.setVideoSize(width, height)
+    override fun onVideoTrackPrepared(width: Int, height: Int, displayRatio: Double) {
+        val displayHeight = if (displayRatio > 0) {
+            (width / displayRatio).toInt()
+        } else {
+            height
+        }
+        Log.i(TAG, "onNative_videoTrackPrepared: width: $width, height: $height, displayRatio: $displayRatio, displayHeight: $displayHeight")
+        mRenderManager.setVideoSize(width, displayHeight)
     }
 
     override fun onAudioTrackPrepared() {
@@ -365,6 +370,7 @@ class MyPlayer(private val mContext: Context,
             y?.let { ByteBuffer.wrap(y) },
             u?.let { ByteBuffer.wrap(u) },
             v?.let { ByteBuffer.wrap(v) },
+            mVideoRotate
         )
         mRenderManager.pushVideoData(fmt, renderData)
         mGlSurfaceView.requestRender()

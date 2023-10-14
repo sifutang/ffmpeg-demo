@@ -19,7 +19,7 @@ void FFMpegPlayer::init(JNIEnv *env, jobject thiz) {
 
     mPlayerJni.reset();
     mPlayerJni.instance = env->NewGlobalRef(thiz);
-    mPlayerJni.onVideoPrepared = env->GetMethodID(jclazz, "onNative_videoTrackPrepared", "(II)V");
+    mPlayerJni.onVideoPrepared = env->GetMethodID(jclazz, "onNative_videoTrackPrepared", "(IID)V");
     mPlayerJni.onVideoFrameArrived = env->GetMethodID(jclazz, "onNative_videoFrameArrived", "(III[B[B[B)V");
 
     mPlayerJni.onAudioPrepared = env->GetMethodID(jclazz, "onNative_audioTrackPrepared", "()V");
@@ -92,7 +92,9 @@ bool FFMpegPlayer::prepare(JNIEnv *env, std::string &path, jobject surface) {
         }
 
         if (mPlayerJni.isValid()) {
-            env->CallVoidMethod(mPlayerJni.instance, mPlayerJni.onVideoPrepared, mVideoDecoder->getWidth(), mVideoDecoder->getHeight());
+            AVRational dar = mVideoDecoder->getDisplayAspectRatio();
+            double ratio = dar.num / (double)dar.den;
+            env->CallVoidMethod(mPlayerJni.instance, mPlayerJni.onVideoPrepared, mVideoDecoder->getWidth(), mVideoDecoder->getHeight(), ratio);
         }
     }
 
