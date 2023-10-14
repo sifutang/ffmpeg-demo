@@ -45,8 +45,8 @@ class Media(val path: String,
 
     fun getDurationDesc(): String {
         val second = duration / 1000
-        val m = (second / 60).toInt()
         val h = (second / 3600).toInt()
+        val m = ((second - h * 3600) / 60).toInt()
         val s = (second - h * 3600 - m * 60).toInt()
         return "%02d:%02d:%02d".format(h, m, s) // 00:00:00
     }

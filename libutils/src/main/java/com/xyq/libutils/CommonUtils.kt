@@ -31,7 +31,7 @@ object CommonUtils {
 
     fun getTimeDesc(timeS: Int): String {
         val hour = timeS / 3600
-        val minute = timeS / 60
+        val minute = (timeS - hour * 3600) / 60
         val second = timeS - hour * 3600 - minute * 60
         return "%02d:%02d:%02d".format(hour, minute, second) // 00:00:00
     }
