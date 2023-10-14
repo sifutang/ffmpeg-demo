@@ -1,4 +1,5 @@
 #include "FFMpegPlayer.h"
+#include "../vendor/nlohmann/json.hpp"
 
 FFMpegPlayer::FFMpegPlayer() {
     LOGI("FFMpegPlayer")
@@ -125,6 +126,10 @@ bool FFMpegPlayer::prepare(JNIEnv *env, std::string &path, jobject surface) {
     if (prepared) {
         updatePlayerState(PlayerState::PREPARE);
     }
+
+    nlohmann::json j;
+    j["path"] = path;
+    LOGE("mediainfo json: %s", j.dump().c_str())
     return prepared;
 }
 

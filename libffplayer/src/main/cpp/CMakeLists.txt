@@ -22,6 +22,9 @@ set(libyuv_lib_dir ${CMAKE_SOURCE_DIR}/../libs/${CMAKE_ANDROID_ARCH_ABI})
 set(libyuv_head_dir ${CMAKE_SOURCE_DIR}/vendor/libyuv)
 include_directories(${libyuv_head_dir}/libyuv.h)
 
+# nlohmann
+set(nlohmann_dir ${CMAKE_SOURCE_DIR}/vendor/nlohmann)
+
 # Creates and names a library, sets it as either STATIC
 # or SHARED, and provides the relative paths to its source code.
 # You can define multiple libraries, and CMake builds them for you.
@@ -87,6 +90,8 @@ add_library( # Sets the name of the library.
         SHARED
 
         # Provides a relative path to your source file(s).
+        ${nlohmann_dir}/json.hpp
+
         ./decoder/BaseDecoder.cpp
         ./decoder/VideoDecoder.cpp
         ./decoder/AudioDecoder.cpp
