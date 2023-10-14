@@ -5,11 +5,28 @@ pluginManagement {
         mavenCentral()
     }
 }
+
+enableFeaturePreview("VERSION_CATALOGS")
 dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories {
         google()
         mavenCentral()
+    }
+
+    versionCatalogs {
+        libs {
+            // system
+            alias('coreKtx').to('androidx.core', 'core-ktx').version('1.8.0')
+            alias('material').to('com.google.android.material', 'material').version('1.9.0')
+            alias('appcompat').to('androidx.appcompat', 'appcompat').version('1.6.1')
+            alias('constraintlayout').to('androidx.constraintlayout', 'constraintlayout').version('2.1.4')
+
+            // test
+            alias('junit').to('junit', 'junit').version('4.13.2')
+            alias('androidxJunit').to('androidx.test.ext', 'junit').version('1.1.5')
+            alias('androidxEspressoCore').to('androidx.test.espresso', 'espresso-core').version('3.5.1')
+        }
     }
 }
 rootProject.name = "FFMpegDemo"
