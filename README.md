@@ -48,3 +48,5 @@
 [从一个NV12渲染错误的issue说起](https://mp.weixin.qq.com/s/rsZGqKxS-LsPL8M8O537Sw)
 
 [使用OpenGL实现圆角效果](https://mp.weixin.qq.com/s/FD9Bv97YD217DC8FrGxROw)
+
+[Android FFmpeg系列13--升级到6.0](https://mp.weixin.qq.com/s/_9d9ag-BkkPGCpHD70VA4Q)
