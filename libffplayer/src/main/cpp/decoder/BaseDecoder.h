@@ -3,6 +3,7 @@
 
 #include <functional>
 #include <string>
+#include "../vendor/nlohmann/json.hpp"
 
 extern "C" {
 #include "../vendor/ffmpeg//libavcodec/avcodec.h"
@@ -40,6 +41,8 @@ public:
 
     int getStreamIndex() const;
 
+    std::string getMediaInfo();
+
     void needFixStartTime();
 
     void setErrorMsgListener(std::function<void(int, std::string &)> listener);
@@ -66,6 +69,8 @@ protected:
     int64_t mRetryReceiveCount = 7;
 
     bool mFixStartTime = false;
+
+    nlohmann::json mMediaInfoJson;
 
 private:
     int mStreamIndex = -1;

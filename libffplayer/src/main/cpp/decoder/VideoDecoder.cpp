@@ -141,6 +141,16 @@ bool VideoDecoder::prepare() {
     mRetryReceiveCount = RETRY_RECEIVE_COUNT;
     LOGI("codec name: %s", mVideoCodec->name)
 
+    mMediaInfoJson.clear();
+    mMediaInfoJson["width"] = mWidth;
+    mMediaInfoJson["height"] = mHeight;
+    mMediaInfoJson["use_hw"] = useHwDecoder;
+    mMediaInfoJson["codec_name"] = mVideoCodec->name;
+    mMediaInfoJson["duration"] = getDuration();
+    auto ratio = getDisplayAspectRatio();
+    mMediaInfoJson["dar"] = std::to_string(ratio.num) + ":" + std::to_string(ratio.den);
+    mMediaInfoJson["rotate"] = getRotate();
+
     return true;
 }
 

@@ -147,4 +147,8 @@ class ImagePlayer: IPlayer {
     override fun getDuration(): Double {
         return 0.0
     }
+
+    override fun getMediaInfo(): String? {
+        return null
+    }
 }

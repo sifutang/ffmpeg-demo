@@ -30,4 +30,6 @@ interface IPlayer {
      * ms
      */
     fun getDuration(): Double
+
+    fun getMediaInfo(): String?
 }

@@ -66,6 +66,12 @@ bool AudioDecoder::prepare() {
 
     mStartTimeMsForSync = -1;
 
+    mMediaInfoJson.clear();
+    mMediaInfoJson["sample_rate"] = mCodecContext->sample_rate;
+    mMediaInfoJson["sample_fmt"] = av_get_sample_fmt_name(mCodecContext->sample_fmt);
+    mMediaInfoJson["channel"] = mCodecContext->ch_layout.nb_channels;
+    mMediaInfoJson["codec_name"] = mAudioCodec->name;
+
     return ret == 0;
 }
 

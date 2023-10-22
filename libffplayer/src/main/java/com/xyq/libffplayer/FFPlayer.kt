@@ -62,6 +62,10 @@ class FFPlayer: IPlayer {
         return nativeGetDuration(mNativePtr)
     }
 
+    override fun getMediaInfo(): String? {
+        return nativeGetMediaInfo(mNativePtr);
+    }
+
     private fun onNative_videoTrackPrepared(width: Int, height: Int, displayRatio: Double) {
         mListener?.onVideoTrackPrepared(width, height, displayRatio)
     }
@@ -112,4 +116,6 @@ class FFPlayer: IPlayer {
     private external fun nativeGetDuration(handle: Long): Double
 
     private external fun nativeGetRotate(handle: Long): Int
+
+    private external fun nativeGetMediaInfo(handle: Long): String?
 }

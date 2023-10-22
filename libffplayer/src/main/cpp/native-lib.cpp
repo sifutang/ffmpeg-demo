@@ -119,3 +119,15 @@ Java_com_xyq_libffplayer_FFPlayer_nativeGetRotate(JNIEnv *env, jobject thiz, jlo
     }
     return 0;
 }
+
+extern "C"
+JNIEXPORT jstring JNICALL
+Java_com_xyq_libffplayer_FFPlayer_nativeGetMediaInfo(JNIEnv *env, jobject thiz, jlong handle) {
+    auto *player = reinterpret_cast<FFMpegPlayer *>(handle);
+    if (player) {
+        std::string info;
+        player->getMediaInfo(info);
+        return env->NewStringUTF(info.c_str());
+    }
+    return nullptr;
+}

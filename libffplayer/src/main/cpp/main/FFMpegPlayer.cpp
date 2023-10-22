@@ -30,6 +30,7 @@ void FFMpegPlayer::init(JNIEnv *env, jobject thiz) {
 }
 
 bool FFMpegPlayer::prepare(JNIEnv *env, std::string &path, jobject surface) {
+    mPath = path;
     // step0: register jvm to ffmpeg for mediacodec decoding
     if (mJvm == nullptr) {
         env->GetJavaVM(&mJvm);
@@ -127,9 +128,6 @@ bool FFMpegPlayer::prepare(JNIEnv *env, std::string &path, jobject surface) {
         updatePlayerState(PlayerState::PREPARE);
     }
 
-    nlohmann::json j;
-    j["path"] = path;
-    LOGE("mediainfo json: %s", j.dump().c_str())
     return prepared;
 }
 
@@ -177,6 +175,7 @@ void FFMpegPlayer::stop() {
     mIsSeek = false;
     mVideoSeekPos = -1;
     mAudioSeekPos = -1;
+    mPath = "";
 
     // release video res
     if (mVideoThread != nullptr) {
@@ -625,4 +624,16 @@ void FFMpegPlayer::onPlayCompleted(JNIEnv *env) {
     if (mPlayerJni.isValid()) {
         env->CallVoidMethod(mPlayerJni.instance, mPlayerJni.onPlayCompleted);
     }
+}
+
+void FFMpegPlayer::getMediaInfo(std::string &info) {
+    nlohmann::json j;
+    j["path"] = mPath;
+    if (mVideoDecoder) {
+        j["video"] = mVideoDecoder->getMediaInfo();
+    }
+    if (mAudioDecoder) {
+        j["audio"] = mAudioDecoder->getMediaInfo();
+    }
+    info = j.dump();
 }

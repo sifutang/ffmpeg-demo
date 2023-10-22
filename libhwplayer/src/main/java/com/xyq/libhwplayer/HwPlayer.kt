@@ -78,4 +78,8 @@ class HwPlayer: IPlayer {
     override fun getDuration(): Double {
         return mVideoDecoder!!.getDuration()
     }
+
+    override fun getMediaInfo(): String? {
+        return null
+    }
 }

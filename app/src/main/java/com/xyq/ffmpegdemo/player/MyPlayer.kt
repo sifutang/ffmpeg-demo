@@ -9,6 +9,7 @@ import android.media.audiofx.Visualizer
 import android.opengl.GLSurfaceView
 import android.util.Log
 import android.view.Surface
+import com.xyq.ffmpegdemo.entity.MediaInfo
 import com.xyq.libbase.player.IPlayer
 import com.xyq.libbase.player.IPlayerListener
 import com.xyq.libffplayer.FFPlayer
@@ -149,6 +150,8 @@ class MyPlayer(private val mContext: Context,
         mVideoRotate = mProxy.getRotate()
         mRenderManager.setVideoRotate(mVideoRotate)
         Log.i(TAG, "prepare: done, duration: $mDuration, rotate: $mVideoRotate, consume: ${System.currentTimeMillis() - start}")
+        val mediaInfo = MediaInfo(mProxy.getMediaInfo())
+        Log.i(TAG, "prepare done, media info: $mediaInfo")
     }
 
     private fun initProxy(config: PlayerConfig, isVideo: Boolean) {

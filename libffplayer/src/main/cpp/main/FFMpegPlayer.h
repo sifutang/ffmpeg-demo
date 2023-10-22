@@ -91,9 +91,13 @@ public:
 
     int getRotate();
 
+    void getMediaInfo(std::string &info);
+
 private:
     JavaVM *mJvm = nullptr;
     PlayerJniContext mPlayerJni{};
+
+    std::string mPath = "";
 
     volatile PlayerState mPlayerState = UNKNOWN;
 

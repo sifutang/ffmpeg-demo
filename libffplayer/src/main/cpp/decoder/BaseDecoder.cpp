@@ -71,3 +71,7 @@ AVCodecContext *BaseDecoder::getCodecContext() {
 AVRational BaseDecoder::getTimeBase() {
     return mTimeBase;
 }
+
+std::string BaseDecoder::getMediaInfo() {
+    return mMediaInfoJson.dump();
+}
