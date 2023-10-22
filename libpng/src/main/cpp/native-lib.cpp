@@ -5,6 +5,17 @@
 #include "header/Logger.h"
 #include "ScopedUtfChars.h"
 
+/* Automatically clean up after throwing an exception */
+struct PNGAutoClean {
+    PNGAutoClean(png_structp p, png_infop i): png_ptr(p), info_ptr(i) {}
+    ~PNGAutoClean() {
+        png_destroy_read_struct(&png_ptr, &info_ptr, nullptr);
+    }
+private:
+    png_structp png_ptr;
+    png_infop info_ptr;
+};
+
 extern "C"
 JNIEXPORT void JNICALL
 Java_com_xyq_libpng_PngReader_read(JNIEnv *env, jobject thiz, jstring path, jobject data) {
@@ -15,8 +26,8 @@ Java_com_xyq_libpng_PngReader_read(JNIEnv *env, jobject thiz, jstring path, jobj
     jfieldID bitDepthFiled = env->GetFieldID(jclazz, "bitDepth", "I");
 
     ScopedUtfChars filePath(env, path);
-    png_structp pngPtr = nullptr;
-    png_infop infoPtr = nullptr;
+    png_structp pngPtr;
+    png_infop infoPtr;
     FILE* file;
 
     do {
@@ -29,20 +40,25 @@ Java_com_xyq_libpng_PngReader_read(JNIEnv *env, jobject thiz, jstring path, jobj
         char png_header[8];
         fread(png_header, 1, 8, file);
         if (png_sig_cmp((png_bytep) png_header, 0, 8)) {
-            LOGI("PNG_Helper, not a png file")
+            LOGE("PNG_Helper, not a png file")
             break;
         }
 
         pngPtr = png_create_read_struct(PNG_LIBPNG_VER_STRING, nullptr, nullptr, nullptr);
         infoPtr = png_create_info_struct(pngPtr);
+        PNGAutoClean autoClean(pngPtr, infoPtr);
         if (setjmp(png_jmpbuf(pngPtr))) {
-            LOGI("PNG_Helper, Failed to read the PNG file")
+            LOGE("PNG_Helper, Failed to read the PNG file")
             break;
         }
 
         png_init_io(pngPtr, file);
         png_set_sig_bytes(pngPtr, 8);
-        png_read_png(pngPtr, infoPtr, PNG_TRANSFORM_EXPAND, nullptr);
+        int transforms = PNG_TRANSFORM_STRIP_16 |
+                                          PNG_TRANSFORM_GRAY_TO_RGB |
+                                          PNG_TRANSFORM_PACKING |
+                                          PNG_TRANSFORM_EXPAND;
+        png_read_png(pngPtr, infoPtr, transforms, nullptr);
 
         auto width = png_get_image_width(pngPtr, infoPtr);
         auto height = png_get_image_height(pngPtr, infoPtr);
@@ -72,13 +88,13 @@ Java_com_xyq_libpng_PngReader_read(JNIEnv *env, jobject thiz, jstring path, jobj
                     buffer[pos++] = row_pointers[row][col + 3 * offset]; // alpha
                 }
             }
+        } else {
+            LOGE("not impl")
+            abort();
         }
     } while (false);
 
     if (file) {
         fclose(file);
-    }
-    if (pngPtr != nullptr || infoPtr != nullptr) {
-        png_destroy_read_struct(&pngPtr, &infoPtr, nullptr);
     }
 }
