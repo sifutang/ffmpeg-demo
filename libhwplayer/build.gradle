@@ -33,8 +33,9 @@ android {
 dependencies {
     implementation project(path: ':libbase')
     implementation project(path: ':libpng')
+    implementation project(path: ':libjpeg')
+    implementation project(path: ':libutils')
 
-    implementation 'androidx.exifinterface:exifinterface:1.3.6'
     implementation libs.coreKtx
     implementation libs.appcompat
     implementation libs.material

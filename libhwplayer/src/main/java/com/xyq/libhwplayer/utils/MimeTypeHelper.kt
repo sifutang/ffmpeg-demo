@@ -5,20 +5,38 @@ import java.io.RandomAccessFile
 
 object MimeTypeHelper {
 
-    fun isPngFile(path: String): Boolean {
+    enum class MimeType {
+        UNKNOWN,
+        PNG,
+        JPEG
+    }
+
+    fun getFileMimeType(path: String): MimeType {
         val file = File(path)
         if (!file.exists()) {
-            return false
+            return MimeType.UNKNOWN
         }
 
-        val pngSignatureLen = 8
-        val sign = readBytesFromFile(file, 0, pngSignatureLen)
-        if (sign == null || sign.size != pngSignatureLen) {
-            return false
+        val size = 8
+        val sign = readBytesFromFile(file, 0, size)
+        if (sign == null || sign.size != size) {
+            return MimeType.UNKNOWN
         }
 
+        // png check
         val pngSignature = byteArrayOf(137.toByte(), 80, 78, 71, 13, 10, 26, 10)
-        return pngSignature.contentEquals(sign)
+        if (pngSignature.contentEquals(sign)) {
+            return MimeType.PNG
+        }
+
+        // jpeg check
+        val jpegSignature = byteArrayOf(0XFF.toByte(), 0XD8.toByte())
+        val jpegReadHeader = byteArrayOf(sign[0], sign[1])
+        if (jpegSignature.contentEquals(jpegReadHeader)) {
+            return MimeType.JPEG
+        }
+
+        return MimeType.UNKNOWN
     }
 
     private fun readBytesFromFile(file: File, offset: Long, len: Int): ByteArray? {

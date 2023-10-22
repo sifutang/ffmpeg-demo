@@ -4,6 +4,7 @@ import android.content.ContentResolver
 import android.content.ContentValues
 import android.content.Context
 import android.graphics.Bitmap
+import androidx.exifinterface.media.ExifInterface
 import android.provider.MediaStore
 import android.util.Log
 import java.io.File
@@ -89,5 +90,22 @@ object FileUtils {
             put(MediaStore.Images.Media.MIME_TYPE, mimeType)
         }
         contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
+    }
+
+    fun getImageOrientation(imagePath: String): Int {
+        var orientation = 0
+        try {
+            val exif = ExifInterface(imagePath)
+            orientation = when (exif.getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_UNDEFINED)) {
+                ExifInterface.ORIENTATION_NORMAL -> 0
+                ExifInterface.ORIENTATION_ROTATE_90 -> 90
+                ExifInterface.ORIENTATION_ROTATE_180 -> 180
+                ExifInterface.ORIENTATION_ROTATE_270 -> 270
+                else -> 0
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+        return orientation
     }
 }

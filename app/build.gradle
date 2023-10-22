@@ -14,6 +14,10 @@ android {
         versionName "1.0"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        ndk {
+            //noinspection ChromeOsAbiSupport
+            abiFilters 'armeabi-v7a', 'arm64-v8a'
+        }
     }
 
     buildTypes {
@@ -37,7 +41,6 @@ android {
 dependencies {
     implementation project(path: ':libbase')
     implementation project(path: ':libutils')
-    implementation project(path: ':libpng')
     implementation project(path: ':libmediapicker')
     implementation project(path: ':librender')
     implementation project(path: ':libhwplayer')

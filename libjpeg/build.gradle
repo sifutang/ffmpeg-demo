@@ -4,7 +4,7 @@ plugins {
 }
 
 android {
-    namespace 'com.xyq.libpng'
+    namespace 'com.xyq.libjpeg'
     compileSdk 33
 
     defaultConfig {

@@ -4,13 +4,14 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.ColorSpace
 import android.os.Build
-import androidx.exifinterface.media.ExifInterface
 import android.util.Log
 import android.view.Surface
 import com.xyq.libbase.player.IPlayer
 import com.xyq.libbase.player.IPlayerListener
 import com.xyq.libhwplayer.utils.MimeTypeHelper
+import com.xyq.libjpeg.JpegReader
 import com.xyq.libpng.PngReader
+import com.xyq.libutils.FileUtils
 import java.nio.ByteBuffer
 
 class ImagePlayer: IPlayer {
@@ -35,20 +36,9 @@ class ImagePlayer: IPlayer {
     }
 
     override fun prepare(path: String, surface: Surface?) {
-        var colorSpace: ColorSpace? = null
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val options = BitmapFactory.Options()
-            options.inJustDecodeBounds = true
-            BitmapFactory.decodeFile(path, options)
-            colorSpace = options.outColorSpace
-            colorSpace?.let {
-                Log.i(TAG, "prepare: get color space: ${it.name}")
-            }
-        }
-
         val options = BitmapFactory.Options()
         options.inPreferredConfig = Bitmap.Config.ARGB_8888
-        colorSpace?.let {
+        getColorSpace(path)?.let {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && it != ColorSpace.get(ColorSpace.Named.SRGB)) {
                 options.inPreferredColorSpace = ColorSpace.get(ColorSpace.Named.SRGB)
                 Log.i(TAG, "prepare: inPreferredColorSpace s-rgb")
@@ -59,43 +49,52 @@ class ImagePlayer: IPlayer {
         if (bitmap != null) {
             mWidth = bitmap.width
             mHeight = bitmap.height
-            mRotate = getImageOrientation(path)
+            mRotate = FileUtils.getImageOrientation(path)
             mRgbaBuffer = bitmapToByteBuffer(bitmap)
             mListener?.onVideoTrackPrepared(mWidth, mHeight, -1.0)
             bitmap.recycle()
             return
         }
 
-        Log.e(TAG, "prepare: decodeFile failed")
-        if (MimeTypeHelper.isPngFile(path)) {
-            val pngData = PngReader().load(path)
-            if (pngData.isValid()) {
-                mWidth = pngData.width
-                mHeight = pngData.height
-                mRotate = 0
-                mRgbaBuffer = pngData.buffer
+        Log.e(TAG, "prepare: System decodeFile failed")
+        val mimeType = MimeTypeHelper.getFileMimeType(path)
+        if (mimeType == MimeTypeHelper.MimeType.JPEG) {
+            val data = JpegReader().load(path)
+            if (data.isValid()) {
+                mWidth = data.width
+                mHeight = data.height
+                mRgbaBuffer = data.buffer
+                mRotate = data.rotate
                 mListener?.onVideoTrackPrepared(mWidth, mHeight, -1.0)
             } else {
-                Log.e(TAG, "prepare: use Custom PngReader decode failed")
+                Log.e(TAG, "prepare: use JpegReader decode failed")
+            }
+        } else if (mimeType == MimeTypeHelper.MimeType.PNG) {
+            val data = PngReader().load(path)
+            if (data.isValid()) {
+                mWidth = data.width
+                mHeight = data.height
+                mRotate = data.rotate
+                mRgbaBuffer = data.buffer
+                mListener?.onVideoTrackPrepared(mWidth, mHeight, -1.0)
+            } else {
+                Log.e(TAG, "prepare: use PngReader decode failed")
             }
         }
     }
 
-    private fun getImageOrientation(imagePath: String): Int {
-        var orientation = 0
-        try {
-            val exif = ExifInterface(imagePath)
-            orientation = when (exif.getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_UNDEFINED)) {
-                ExifInterface.ORIENTATION_NORMAL -> 0
-                ExifInterface.ORIENTATION_ROTATE_90 -> 90
-                ExifInterface.ORIENTATION_ROTATE_180 -> 180
-                ExifInterface.ORIENTATION_ROTATE_270 -> 270
-                else -> 0
+    private fun getColorSpace(path: String): ColorSpace? {
+        var colorSpace: ColorSpace? = null
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val options = BitmapFactory.Options()
+            options.inJustDecodeBounds = true
+            BitmapFactory.decodeFile(path, options)
+            colorSpace = options.outColorSpace
+            colorSpace?.let {
+                Log.i(TAG, "get color space: ${it.name}")
             }
-        } catch (e: Exception) {
-            e.printStackTrace()
         }
-        return orientation
+        return colorSpace
     }
 
     override fun start() {

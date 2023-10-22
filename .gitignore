@@ -16,3 +16,5 @@
 local.properties
 app/debug/app-debug.apk
 app/debug/output-metadata.json
+app/release/app-release.apk
+app/release/output-metadata.json

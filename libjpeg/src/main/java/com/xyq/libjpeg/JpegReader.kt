@@ -1,30 +1,32 @@
-package com.xyq.libpng
+package com.xyq.libjpeg
 
 import android.util.Log
+import com.xyq.libutils.FileUtils
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
-class PngReader {
+class JpegReader {
 
     companion object {
-        private const val TAG = "PNG_Helper"
+        private const val TAG = "JPEG_Helper"
     }
 
     init {
-        System.loadLibrary("png_helper")
+        System.loadLibrary("jpeg_helper")
     }
 
-    fun load(path: String): PngData {
+    fun load(path: String): ImageData {
         val start = System.currentTimeMillis()
-        val data = PngData()
+        val data = ImageData()
         read(path, data)
+        data.rotate = FileUtils.getImageOrientation(path)
         Log.i(TAG, "read: $data, consume: ${System.currentTimeMillis() - start}ms")
         return data
     }
 
-    private external fun read(path: String, data: PngData)
+    private external fun read(path: String, data: ImageData)
 
-    inner class PngData {
+    inner class ImageData {
         var width = 0
         var height = 0
         var rotate = 0
@@ -44,7 +46,8 @@ class PngReader {
         }
 
         override fun toString(): String {
-            return "PngData(width=$width, height=$height, colorType=$colorType, bitDepth=$bitDepth, hasBuffer=${buffer != null})"
+            return "ImageData(width=$width, height=$height, colorType=$colorType, bitDepth=$bitDepth, hasBuffer=${buffer != null})"
         }
     }
+
 }
