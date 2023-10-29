@@ -1,17 +1,10 @@
 package com.xyq.libhwplayer
 
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
-import android.graphics.ColorSpace
-import android.os.Build
 import android.util.Log
 import android.view.Surface
 import com.xyq.libbase.player.IPlayer
 import com.xyq.libbase.player.IPlayerListener
-import com.xyq.libhwplayer.utils.MimeTypeHelper
-import com.xyq.libjpeg.JpegReader
-import com.xyq.libpng.PngReader
-import com.xyq.libutils.FileUtils
+import com.xyq.libhwplayer.reader.ReaderWrapper
 import java.nio.ByteBuffer
 
 class ImagePlayer: IPlayer {
@@ -36,65 +29,18 @@ class ImagePlayer: IPlayer {
     }
 
     override fun prepare(path: String, surface: Surface?) {
-        val options = BitmapFactory.Options()
-        options.inPreferredConfig = Bitmap.Config.ARGB_8888
-        getColorSpace(path)?.let {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && it != ColorSpace.get(ColorSpace.Named.SRGB)) {
-                options.inPreferredColorSpace = ColorSpace.get(ColorSpace.Named.SRGB)
-                Log.i(TAG, "prepare: inPreferredColorSpace s-rgb")
-            }
-        }
-
-        val bitmap = BitmapFactory.decodeFile(path, options)
-        if (bitmap != null) {
-            mWidth = bitmap.width
-            mHeight = bitmap.height
-            mRotate = FileUtils.getImageOrientation(path)
-            mRgbaBuffer = bitmapToByteBuffer(bitmap)
-            mListener?.onVideoTrackPrepared(mWidth, mHeight, -1.0)
-            bitmap.recycle()
+        val reader = ReaderWrapper()
+        val bufferData = reader.load(path)
+        if (bufferData == null) {
+            Log.e(TAG, "prepare: failed")
             return
         }
 
-        Log.e(TAG, "prepare: System decodeFile failed")
-        val mimeType = MimeTypeHelper.getFileMimeType(path)
-        if (mimeType == MimeTypeHelper.MimeType.JPEG) {
-            val data = JpegReader().load(path)
-            if (data.isValid()) {
-                mWidth = data.width
-                mHeight = data.height
-                mRgbaBuffer = data.buffer
-                mRotate = data.rotate
-                mListener?.onVideoTrackPrepared(mWidth, mHeight, -1.0)
-            } else {
-                Log.e(TAG, "prepare: use JpegReader decode failed")
-            }
-        } else if (mimeType == MimeTypeHelper.MimeType.PNG) {
-            val data = PngReader().load(path)
-            if (data.isValid()) {
-                mWidth = data.width
-                mHeight = data.height
-                mRotate = data.rotate
-                mRgbaBuffer = data.buffer
-                mListener?.onVideoTrackPrepared(mWidth, mHeight, -1.0)
-            } else {
-                Log.e(TAG, "prepare: use PngReader decode failed")
-            }
-        }
-    }
-
-    private fun getColorSpace(path: String): ColorSpace? {
-        var colorSpace: ColorSpace? = null
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val options = BitmapFactory.Options()
-            options.inJustDecodeBounds = true
-            BitmapFactory.decodeFile(path, options)
-            colorSpace = options.outColorSpace
-            colorSpace?.let {
-                Log.i(TAG, "get color space: ${it.name}")
-            }
-        }
-        return colorSpace
+        mWidth = bufferData.width
+        mHeight = bufferData.height
+        mRotate = bufferData.rotate
+        mRgbaBuffer = bufferData.data
+        mListener?.onVideoTrackPrepared(mWidth, mHeight, -1.0)
     }
 
     override fun start() {
@@ -104,14 +50,6 @@ class ImagePlayer: IPlayer {
             mListener?.onVideoFrameArrived(mWidth, mHeight, FORMAT_RGBA, it.array(), null, null)
             mListener?.onPlayComplete()
         }
-    }
-
-    private fun bitmapToByteBuffer(bitmap: Bitmap): ByteBuffer {
-        val bytes = bitmap.byteCount
-        val buffer = ByteBuffer.allocateDirect(bytes)
-        bitmap.copyPixelsToBuffer(buffer)
-        buffer.rewind()
-        return buffer
     }
 
     override fun resume() {

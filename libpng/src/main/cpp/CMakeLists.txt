@@ -62,6 +62,8 @@ if (NOT AWK OR ANDROID)
     add_custom_target(genfiles) # Dummy
 endif ()
 
+add_definitions(-DPNG_DEBUG=0)
+
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
 set(libpng_public_hdrs

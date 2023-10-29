@@ -52,6 +52,14 @@ Java_com_xyq_libpng_PngReader_read(JNIEnv *env, jobject thiz, jstring path, jobj
             break;
         }
 
+        auto warningFunc = [](png_structp pngPtr, png_const_charp errMsg) {
+            LOGW("PNG_Helper: read the PNG file warning: %s", errMsg)
+        };
+        auto errMsgFunc = [](png_structp pngPtr, png_const_charp errMsg) {
+            LOGE("PNG_Helper: Failed to read the PNG file: %s", errMsg)
+        };
+        png_set_error_fn(pngPtr, nullptr, errMsgFunc, warningFunc);
+
         png_init_io(pngPtr, file);
         png_set_sig_bytes(pngPtr, 8);
         int transforms = PNG_TRANSFORM_STRIP_16 |
