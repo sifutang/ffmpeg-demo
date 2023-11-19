@@ -50,3 +50,7 @@
 [使用OpenGL实现圆角效果](https://mp.weixin.qq.com/s/FD9Bv97YD217DC8FrGxROw)
 
 [Android FFmpeg系列13--升级到6.0](https://mp.weixin.qq.com/s/_9d9ag-BkkPGCpHD70VA4Q)
+
+[视频SAR/DAR信息处理](https://mp.weixin.qq.com/s/Z3BWkLbwAKpyYurJW-Llcg)
+
+[FFmpeg 6.1版本已经发布](https://mp.weixin.qq.com/s/K9YkngbXe8rEnIeohf9ufw)
