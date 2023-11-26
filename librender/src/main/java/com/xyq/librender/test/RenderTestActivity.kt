@@ -43,7 +43,7 @@ class RenderTestActivity : AppCompatActivity(), GLSurfaceView.Renderer {
         val radiusCornerFilter = RadiusCornerFilter(applicationContext).apply {
             setVal(RadiusCornerFilter.VAL_RADIUS, 50f)
         }
-//        mRenderManager.addFilter(radiusCornerFilter)
+        mRenderManager.addFilter(radiusCornerFilter)
     }
 
     override fun onDestroy() {
