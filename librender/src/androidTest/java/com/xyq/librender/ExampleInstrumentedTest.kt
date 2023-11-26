@@ -35,4 +35,17 @@ class ExampleInstrumentedTest {
         Thread.sleep(60 * 1000)
         scenario.close()
     }
+
+    @Test
+    fun useRenderTestActivity_i420() {
+        val scenario: ActivityScenario<RenderTestActivity> = ActivityScenario.launch(
+            RenderTestActivity::class.java
+        )
+        scenario.onActivity {
+            it.setRenderFormat(RenderManager.RenderFormat.YUV420)
+            it.draw()
+        }
+        Thread.sleep(60 * 1000)
+        scenario.close()
+    }
 }

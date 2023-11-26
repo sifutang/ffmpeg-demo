@@ -17,7 +17,7 @@ import com.xyq.librender.utils.OpenGLTools
 class RenderManager(private val mContext: Context) {
 
     enum class RenderFormat {
-        YUV420,
+        YUV420, // i420
         NV12,
         RGBA, // R8G8B8A8
         OES,

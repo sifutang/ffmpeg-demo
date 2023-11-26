@@ -3,7 +3,7 @@
 precision mediump float;
 
 out vec4 fragColor;
-out vec2 vCoordinate;
+in vec2 vCoordinate;
 
 uniform sampler2D samplerY;
 uniform sampler2D samplerUV;

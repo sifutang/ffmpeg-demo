@@ -33,7 +33,7 @@ class RenderTestActivity : AppCompatActivity(), GLSurfaceView.Renderer {
         Log.i(TAG, "onCreate: ")
 
         mGLSurfaceView = findViewById(R.id.gl_surface_view)
-        mGLSurfaceView.setEGLContextClientVersion(2)
+        mGLSurfaceView.setEGLContextClientVersion(3)
         mGLSurfaceView.setRenderer(this)
         mGLSurfaceView.renderMode = GLSurfaceView.RENDERMODE_WHEN_DIRTY
 
@@ -43,7 +43,7 @@ class RenderTestActivity : AppCompatActivity(), GLSurfaceView.Renderer {
         val radiusCornerFilter = RadiusCornerFilter(applicationContext).apply {
             setVal(RadiusCornerFilter.VAL_RADIUS, 50f)
         }
-        mRenderManager.addFilter(radiusCornerFilter)
+//        mRenderManager.addFilter(radiusCornerFilter)
     }
 
     override fun onDestroy() {
@@ -83,22 +83,46 @@ class RenderTestActivity : AppCompatActivity(), GLSurfaceView.Renderer {
         var file = ""
         if (format == RenderManager.RenderFormat.NV12) {
             file = "yuv_test_nv12.yuv"
+        } else if (format == RenderManager.RenderFormat.YUV420) {
+            file = "yuv_test_i420.yuv"
         }
         if (file.isEmpty()) {
             return RenderData(TEST_YUV_FILE_WIDTH, TEST_YUV_FILE_HEIGHT, null, null, null)
         }
 
         val buffer = FileUtils.read(file, this)
-        val yBuffer = ByteBuffer.allocateDirect(TEST_YUV_FILE_WIDTH * TEST_YUV_FILE_HEIGHT)
-            .order(ByteOrder.nativeOrder())
-        yBuffer.put(buffer, 0, TEST_YUV_FILE_WIDTH * TEST_YUV_FILE_HEIGHT)
-        yBuffer.position(0)
+        var renderData: RenderData? = null
+        if (format == RenderManager.RenderFormat.NV12) {
+            val yBuffer = ByteBuffer.allocateDirect(TEST_YUV_FILE_WIDTH * TEST_YUV_FILE_HEIGHT)
+                .order(ByteOrder.nativeOrder())
+            yBuffer.put(buffer, 0, TEST_YUV_FILE_WIDTH * TEST_YUV_FILE_HEIGHT)
+            yBuffer.position(0)
 
-        val uvBuffer = ByteBuffer.allocateDirect(TEST_YUV_FILE_WIDTH * TEST_YUV_FILE_HEIGHT / 2)
-            .order(ByteOrder.nativeOrder())
-        uvBuffer.put(buffer, TEST_YUV_FILE_WIDTH * TEST_YUV_FILE_HEIGHT, TEST_YUV_FILE_WIDTH * TEST_YUV_FILE_HEIGHT / 2)
-        uvBuffer.position(0)
+            val uvBuffer = ByteBuffer.allocateDirect(TEST_YUV_FILE_WIDTH * TEST_YUV_FILE_HEIGHT / 2)
+                .order(ByteOrder.nativeOrder())
+            uvBuffer.put(buffer, TEST_YUV_FILE_WIDTH * TEST_YUV_FILE_HEIGHT, TEST_YUV_FILE_WIDTH * TEST_YUV_FILE_HEIGHT / 2)
+            uvBuffer.position(0)
 
-        return RenderData(TEST_YUV_FILE_WIDTH, TEST_YUV_FILE_HEIGHT, yBuffer, uvBuffer, null)
+            renderData = RenderData(TEST_YUV_FILE_WIDTH, TEST_YUV_FILE_HEIGHT, yBuffer, uvBuffer, null)
+        } else if (format == RenderManager.RenderFormat.YUV420) {
+            val yBuffer = ByteBuffer.allocateDirect(TEST_YUV_FILE_WIDTH * TEST_YUV_FILE_HEIGHT)
+                .order(ByteOrder.nativeOrder())
+            yBuffer.put(buffer, 0, TEST_YUV_FILE_WIDTH * TEST_YUV_FILE_HEIGHT)
+            yBuffer.position(0)
+
+            val uBuffer = ByteBuffer.allocateDirect(TEST_YUV_FILE_WIDTH * TEST_YUV_FILE_HEIGHT / 4)
+                .order(ByteOrder.nativeOrder())
+            uBuffer.put(buffer, TEST_YUV_FILE_WIDTH * TEST_YUV_FILE_HEIGHT, TEST_YUV_FILE_WIDTH * TEST_YUV_FILE_HEIGHT / 4)
+            uBuffer.position(0)
+
+            val vBuffer = ByteBuffer.allocateDirect(TEST_YUV_FILE_WIDTH * TEST_YUV_FILE_HEIGHT / 4)
+                .order(ByteOrder.nativeOrder())
+            vBuffer.put(buffer, TEST_YUV_FILE_WIDTH * TEST_YUV_FILE_HEIGHT * 5 / 4, TEST_YUV_FILE_WIDTH * TEST_YUV_FILE_HEIGHT / 4)
+            vBuffer.position(0)
+
+            renderData = RenderData(TEST_YUV_FILE_WIDTH, TEST_YUV_FILE_HEIGHT, yBuffer, uBuffer, vBuffer)
+        }
+
+        return renderData!!
     }
 }
