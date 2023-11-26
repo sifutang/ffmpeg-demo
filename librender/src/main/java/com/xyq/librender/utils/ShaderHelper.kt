@@ -1,6 +1,6 @@
 package com.xyq.librender.utils
 
-import android.opengl.GLES20
+import android.opengl.GLES30
 import android.util.Log
 
 class ShaderHelper {
@@ -24,16 +24,16 @@ class ShaderHelper {
         }
 
         private fun compileVertexShader(shaderCode: String): Int {
-            return compileShader(GLES20.GL_VERTEX_SHADER, shaderCode)
+            return compileShader(GLES30.GL_VERTEX_SHADER, shaderCode)
         }
 
         private fun compileFragmentShader(shaderCode: String): Int {
-            return compileShader(GLES20.GL_FRAGMENT_SHADER, shaderCode)
+            return compileShader(GLES30.GL_FRAGMENT_SHADER, shaderCode)
         }
 
         private fun compileShader(type:Int, shaderCode: String): Int {
             // 1. create shader
-            val shaderObjectId = GLES20.glCreateShader(type)
+            val shaderObjectId = GLES30.glCreateShader(type)
             if (shaderObjectId == 0) {
                 if (DEBUG) {
                     Log.w(TAG, "compileShader: Could not create new shader")
@@ -43,23 +43,23 @@ class ShaderHelper {
             }
 
             // 2. upload source to shader
-            GLES20.glShaderSource(shaderObjectId, shaderCode)
+            GLES30.glShaderSource(shaderObjectId, shaderCode)
 
             // 3. compile shader
-            GLES20.glCompileShader(shaderObjectId)
+            GLES30.glCompileShader(shaderObjectId)
 
             val compileStatus = intArrayOf(0)
-            GLES20.glGetShaderiv(shaderObjectId, GLES20.GL_COMPILE_STATUS, compileStatus, 0)
+            GLES30.glGetShaderiv(shaderObjectId, GLES30.GL_COMPILE_STATUS, compileStatus, 0)
 
             if (DEBUG) {
                 Log.i(
                     TAG, "compileShader: Results of compiling source:\n $shaderCode \n "
-                        + GLES20.glGetShaderInfoLog(shaderObjectId))
+                        + GLES30.glGetShaderInfoLog(shaderObjectId))
             }
 
             if (compileStatus[0] == 0) {
                 // If it failed, delete the shader object.
-                GLES20.glDeleteShader(shaderObjectId)
+                GLES30.glDeleteShader(shaderObjectId)
 
                 if (DEBUG) {
                     Log.w(TAG, "compileShader: Compilation of shader failed");
@@ -73,7 +73,7 @@ class ShaderHelper {
 
         private fun linkProgram(vertexShaderId: Int, fragmentShaderId: Int): Int {
             // 1. create program
-            val programObjectId = GLES20.glCreateProgram()
+            val programObjectId = GLES30.glCreateProgram()
             if (programObjectId == 0) {
                 if (DEBUG) {
                     Log.w(TAG, "linkProgram: Could not create new program")
@@ -82,22 +82,22 @@ class ShaderHelper {
                 return 0
             }
 
-            GLES20.glAttachShader(programObjectId, vertexShaderId)
-            GLES20.glAttachShader(programObjectId, fragmentShaderId)
-            GLES20.glLinkProgram(programObjectId)
+            GLES30.glAttachShader(programObjectId, vertexShaderId)
+            GLES30.glAttachShader(programObjectId, fragmentShaderId)
+            GLES30.glLinkProgram(programObjectId)
 
             val linkStatus = intArrayOf(0)
-            GLES20.glGetProgramiv(programObjectId, GLES20.GL_LINK_STATUS, linkStatus, 0)
+            GLES30.glGetProgramiv(programObjectId, GLES30.GL_LINK_STATUS, linkStatus, 0)
 
             if (DEBUG) {
                 Log.i(
                     TAG, "linkProgram: Results of linking program:\n"
-                            + GLES20.glGetProgramInfoLog(programObjectId)
+                            + GLES30.glGetProgramInfoLog(programObjectId)
                 )
             }
 
             if (linkStatus[0] == 0) {
-                GLES20.glDeleteProgram(programObjectId)
+                GLES30.glDeleteProgram(programObjectId)
                 if (DEBUG) {
                     Log.w(TAG, "linkProgram: failed")
                 }
@@ -109,13 +109,13 @@ class ShaderHelper {
         }
 
         private fun validateProgram(programObjectId: Int): Boolean {
-            GLES20.glValidateProgram(programObjectId)
+            GLES30.glValidateProgram(programObjectId)
 
             val validateStatus = intArrayOf(0)
-            GLES20.glGetProgramiv(programObjectId, GLES20.GL_VALIDATE_STATUS, validateStatus, 0)
+            GLES30.glGetProgramiv(programObjectId, GLES30.GL_VALIDATE_STATUS, validateStatus, 0)
             Log.i(
                 TAG, "validateProgram: Results of validating program: " + validateStatus[0]
-                    + "\nLog: " + GLES20.glGetProgramInfoLog(programObjectId))
+                    + "\nLog: " + GLES30.glGetProgramInfoLog(programObjectId))
 
             return validateStatus[0] != 0;
         }

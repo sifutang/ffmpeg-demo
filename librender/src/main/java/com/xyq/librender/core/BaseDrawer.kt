@@ -1,7 +1,7 @@
 package com.xyq.librender.core
 
 import android.content.Context
-import android.opengl.GLES20
+import android.opengl.GLES30
 import android.opengl.Matrix
 import android.util.Log
 import android.util.Size
@@ -143,7 +143,7 @@ abstract class BaseDrawer(private val mContext: Context) : IDrawer {
     open fun onRelease() {}
 
     open fun getTextureType(): Int {
-        return GLES20.GL_TEXTURE_2D
+        return GLES30.GL_TEXTURE_2D
     }
 
     fun hasInit(): Boolean {
@@ -158,20 +158,20 @@ abstract class BaseDrawer(private val mContext: Context) : IDrawer {
             val fragmentShader = ResManager.ShaderCache.findFragmentShader(getFragmentShader(), mContext)
             mProgram = ShaderHelper.buildProgram(vertexShader, fragmentShader)
 
-            mVertexPosHandler = GLES20.glGetAttribLocation(mProgram, "aPosition")
-            mTexturePosHandler = GLES20.glGetAttribLocation(mProgram, "aCoordinate")
-            mVertexMatrixHandler = GLES20.glGetUniformLocation(mProgram, "uMatrix")
+            mVertexPosHandler = OpenGLTools.getAttribLocation(mProgram, "aPosition")
+            mTexturePosHandler = OpenGLTools.getAttribLocation(mProgram, "aCoordinate")
+            mVertexMatrixHandler = OpenGLTools.getUniformLocation(mProgram, "uMatrix")
 
             mTextures = OpenGLTools.createTextureIds(getTextureSize())
             for (texture in mTextures!!) {
                 val textureType = getTextureType()
-                GLES20.glBindTexture(textureType, texture)
-                GLES20.glTexParameterf(textureType, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_LINEAR.toFloat())
-                GLES20.glTexParameterf(textureType, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_LINEAR.toFloat())
-                GLES20.glTexParameteri(textureType, GLES20.GL_TEXTURE_WRAP_S, GLES20.GL_CLAMP_TO_EDGE)
-                GLES20.glTexParameteri(textureType, GLES20.GL_TEXTURE_WRAP_T, GLES20.GL_CLAMP_TO_EDGE)
+                GLES30.glBindTexture(textureType, texture)
+                GLES30.glTexParameterf(textureType, GLES30.GL_TEXTURE_MIN_FILTER, GLES30.GL_LINEAR.toFloat())
+                GLES30.glTexParameterf(textureType, GLES30.GL_TEXTURE_MAG_FILTER, GLES30.GL_LINEAR.toFloat())
+                GLES30.glTexParameteri(textureType, GLES30.GL_TEXTURE_WRAP_S, GLES30.GL_CLAMP_TO_EDGE)
+                GLES30.glTexParameteri(textureType, GLES30.GL_TEXTURE_WRAP_T, GLES30.GL_CLAMP_TO_EDGE)
             }
-            GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, GLES20.GL_NONE)
+            GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, GLES30.GL_NONE)
 
             onInitParam()
 
@@ -186,13 +186,13 @@ abstract class BaseDrawer(private val mContext: Context) : IDrawer {
 
     override fun draw() {
         pendingTaskRun()
-        GLES20.glViewport(0, 0, mCanvasWidth ,mCanvasHeight)
+        GLES30.glViewport(0, 0, mCanvasWidth ,mCanvasHeight)
         drawCore(mTextures, true, mMatrix)
     }
 
     override fun draw(input: Int) {
         pendingTaskRun()
-        GLES20.glViewport(0, 0, mCanvasWidth ,mCanvasHeight)
+        GLES30.glViewport(0, 0, mCanvasWidth ,mCanvasHeight)
         val textures = IntArray(1)
         textures[0] = input
         drawCore(textures, false, mMatrix)
@@ -224,7 +224,7 @@ abstract class BaseDrawer(private val mContext: Context) : IDrawer {
         mFboDesc!!.bind()
         mFboDesc!!.updateRotate(mRotate)
         mFboDesc!!.updateSize(mFrameWidth, mFrameHeight)
-        GLES20.glViewport(0, 0, mFrameWidth ,mFrameHeight)
+        GLES30.glViewport(0, 0, mFrameWidth ,mFrameHeight)
         drawCore(inputs, useBufferInput, mFboDesc!!.getMatrix())
         mFboDesc!!.unBind()
 
@@ -232,12 +232,12 @@ abstract class BaseDrawer(private val mContext: Context) : IDrawer {
     }
 
     override fun release() {
-        GLES20.glDisableVertexAttribArray(mVertexPosHandler)
-        GLES20.glDisableVertexAttribArray(mTexturePosHandler)
-        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, GLES20.GL_NONE)
+        GLES30.glDisableVertexAttribArray(mVertexPosHandler)
+        GLES30.glDisableVertexAttribArray(mTexturePosHandler)
+        GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, GLES30.GL_NONE)
         // delete texture
         mTextures?.apply {
-            GLES20.glDeleteTextures(getTextureSize(), mTextures, 0)
+            GLES30.glDeleteTextures(getTextureSize(), mTextures, 0)
             mTextures = null
         }
 
@@ -247,7 +247,7 @@ abstract class BaseDrawer(private val mContext: Context) : IDrawer {
         }
         // sub release
         onRelease()
-        GLES20.glDeleteProgram(mProgram)
+        GLES30.glDeleteProgram(mProgram)
     }
 
     private fun initDefMatrix() {
@@ -313,19 +313,19 @@ abstract class BaseDrawer(private val mContext: Context) : IDrawer {
             return
         }
 
-        GLES20.glClearColor(mBackgroundColor[0], mBackgroundColor[1], mBackgroundColor[2], mBackgroundColor[3])
-        GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT or GLES20.GL_DEPTH_BUFFER_BIT)
+        GLES30.glClearColor(mBackgroundColor[0], mBackgroundColor[1], mBackgroundColor[2], mBackgroundColor[3])
+        GLES30.glClear(GLES30.GL_COLOR_BUFFER_BIT or GLES30.GL_DEPTH_BUFFER_BIT)
 
-        GLES20.glUseProgram(mProgram)
+        GLES30.glUseProgram(mProgram)
 
-        GLES20.glEnableVertexAttribArray(mVertexPosHandler)
-        GLES20.glEnableVertexAttribArray(mTexturePosHandler)
+        GLES30.glEnableVertexAttribArray(mVertexPosHandler)
+        GLES30.glEnableVertexAttribArray(mTexturePosHandler)
 
-        GLES20.glUniformMatrix4fv(mVertexMatrixHandler, 1, false, matrix, 0)
+        GLES30.glUniformMatrix4fv(mVertexMatrixHandler, 1, false, matrix, 0)
 
         // x,y -> size is 2
-        GLES20.glVertexAttribPointer(mVertexPosHandler, 2, GLES20.GL_FLOAT, false, 0, mVertexBuffer)
-        GLES20.glVertexAttribPointer(mTexturePosHandler, 2, GLES20.GL_FLOAT, false, 0, mTextureBuffer)
+        GLES30.glVertexAttribPointer(mVertexPosHandler, 2, GLES30.GL_FLOAT, false, 0, mVertexBuffer)
+        GLES30.glVertexAttribPointer(mTexturePosHandler, 2, GLES30.GL_FLOAT, false, 0, mTextureBuffer)
 
         if (useBufferInput) {
             synchronized(this) {
@@ -336,6 +336,6 @@ abstract class BaseDrawer(private val mContext: Context) : IDrawer {
             uploadData(textures!!, null)
         }
 
-        GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4)
+        GLES30.glDrawArrays(GLES30.GL_TRIANGLE_STRIP, 0, 4)
     }
 }

@@ -3,7 +3,7 @@ package com.xyq.librender.core
 import android.content.Context
 import android.graphics.SurfaceTexture
 import android.opengl.GLES11Ext
-import android.opengl.GLES20
+import android.opengl.GLES30
 import android.util.Log
 import com.xyq.librender.R
 import com.xyq.librender.model.RenderData
@@ -35,7 +35,7 @@ class OesDrawer(context: Context): BaseDrawer(context) {
     }
 
     override fun onInitParam() {
-        mTextureHandler = GLES20.glGetUniformLocation(mProgram, "samplerOES")
+        mTextureHandler = GLES30.glGetUniformLocation(mProgram, "samplerOES")
 
         synchronized(mLock) {
             mSurfaceTexture = SurfaceTexture(mTextures!![0])
@@ -45,9 +45,9 @@ class OesDrawer(context: Context): BaseDrawer(context) {
     }
 
     override fun uploadData(textures: IntArray, data: RenderData?) {
-        GLES20.glActiveTexture(GLES20.GL_TEXTURE0)
-        GLES20.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, textures[0])
-        GLES20.glUniform1i(mTextureHandler, 0)
+        GLES30.glActiveTexture(GLES30.GL_TEXTURE0)
+        GLES30.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, textures[0])
+        GLES30.glUniform1i(mTextureHandler, 0)
         mSurfaceTexture!!.updateTexImage()
     }
 

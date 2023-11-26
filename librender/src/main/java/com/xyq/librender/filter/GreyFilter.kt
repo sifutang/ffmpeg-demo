@@ -1,7 +1,7 @@
 package com.xyq.librender.filter
 
 import android.content.Context
-import android.opengl.GLES20
+import android.opengl.GLES30
 import com.xyq.librender.R
 import com.xyq.librender.core.RgbaDrawer
 import com.xyq.librender.model.RenderData
@@ -25,12 +25,12 @@ class GreyFilter(context: Context): BaseFilter() {
 
             override fun onInitParam() {
                 super.onInitParam()
-                progressHandler = GLES20.glGetUniformLocation(mProgram, "progress")
+                progressHandler = GLES30.glGetUniformLocation(mProgram, "progress")
             }
 
             override fun uploadData(textures: IntArray, data: RenderData?) {
                 super.uploadData(textures, data)
-                GLES20.glUniform1f(progressHandler, mFilterProgress)
+                GLES30.glUniform1f(progressHandler, mFilterProgress)
             }
         }
     }

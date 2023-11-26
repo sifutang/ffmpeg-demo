@@ -34,7 +34,6 @@ import com.xyq.libutils.CommonUtils
 import com.xyq.libutils.FileUtils
 import java.util.concurrent.Executors
 
-
 class MainActivity : AppCompatActivity() {
 
     companion object {

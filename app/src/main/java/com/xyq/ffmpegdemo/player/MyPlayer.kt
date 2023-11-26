@@ -74,7 +74,7 @@ class MyPlayer(private val mContext: Context,
     private var mGetImageCallback:((FrameBuffer?) -> Unit)? = null
 
     init {
-        mGlSurfaceView.setEGLContextClientVersion(2)
+        mGlSurfaceView.setEGLContextClientVersion(3)
         mGlSurfaceView.setRenderer(this)
         mGlSurfaceView.renderMode = GLSurfaceView.RENDERMODE_WHEN_DIRTY
         mState = State.INIT

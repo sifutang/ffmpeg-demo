@@ -1,7 +1,7 @@
 package com.xyq.librender.filter
 
 import android.content.Context
-import android.opengl.GLES20
+import android.opengl.GLES30
 import com.xyq.librender.R
 import com.xyq.librender.core.RgbaDrawer
 import com.xyq.librender.model.RenderData
@@ -27,16 +27,16 @@ class RadiusCornerFilter(context: Context): BaseFilter() {
 
             override fun onInitParam() {
                 super.onInitParam()
-                radiusHandler = GLES20.glGetUniformLocation(mProgram, "radius")
-                texSizeHandler = GLES20.glGetUniformLocation(mProgram, "texSize")
-                bgColorHandler = GLES20.glGetUniformLocation(mProgram, "bgColor")
+                radiusHandler = GLES30.glGetUniformLocation(mProgram, "radius")
+                texSizeHandler = GLES30.glGetUniformLocation(mProgram, "texSize")
+                bgColorHandler = GLES30.glGetUniformLocation(mProgram, "bgColor")
             }
 
             override fun uploadData(textures: IntArray, data: RenderData?) {
                 super.uploadData(textures, data)
-                GLES20.glUniform1f(radiusHandler, mRadius)
-                GLES20.glUniform2f(texSizeHandler, mFrameWidth.toFloat(), mFrameHeight.toFloat())
-                GLES20.glUniform4f(bgColorHandler, mBackgroundColor[0], mBackgroundColor[1], mBackgroundColor[2], mBackgroundColor[3])
+                GLES30.glUniform1f(radiusHandler, mRadius)
+                GLES30.glUniform2f(texSizeHandler, mFrameWidth.toFloat(), mFrameHeight.toFloat())
+                GLES30.glUniform4f(bgColorHandler, mBackgroundColor[0], mBackgroundColor[1], mBackgroundColor[2], mBackgroundColor[3])
             }
         }
     }

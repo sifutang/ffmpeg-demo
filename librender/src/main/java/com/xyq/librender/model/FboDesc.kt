@@ -1,6 +1,6 @@
 package com.xyq.librender.model
 
-import android.opengl.GLES20
+import android.opengl.GLES30
 import android.opengl.Matrix
 import com.xyq.librender.utils.OpenGLTools
 
@@ -29,10 +29,10 @@ class FboDesc(
         if (mWidth != width || mHeight != height) {
             mWidth = width
             mHeight = height
-            GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, mFboTextureId)
-            GLES20.glTexImage2D(GLES20.GL_TEXTURE_2D, 0, GLES20.GL_RGBA, width, height,
-                0, GLES20.GL_RGBA, GLES20.GL_UNSIGNED_BYTE, null)
-            GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, GLES20.GL_NONE)
+            GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, mFboTextureId)
+            GLES30.glTexImage2D(GLES30.GL_TEXTURE_2D, 0, GLES30.GL_RGBA, width, height,
+                0, GLES30.GL_RGBA, GLES30.GL_UNSIGNED_BYTE, null)
+            GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, GLES30.GL_NONE)
         }
     }
 
