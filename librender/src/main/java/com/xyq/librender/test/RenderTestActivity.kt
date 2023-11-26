@@ -41,7 +41,7 @@ class RenderTestActivity : AppCompatActivity(), GLSurfaceView.Renderer {
         mRenderManager.setVideoSize(TEST_YUV_FILE_WIDTH, TEST_YUV_FILE_HEIGHT)
 
         val radiusCornerFilter = RadiusCornerFilter(applicationContext).apply {
-            setVal(RadiusCornerFilter.VAL_RADIUS, 50f)
+            setVal(RadiusCornerFilter.VAL_RADIUS, 20f)
         }
         mRenderManager.addFilter(radiusCornerFilter)
     }
