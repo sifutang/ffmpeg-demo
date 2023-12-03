@@ -54,3 +54,5 @@
 [视频SAR/DAR信息处理](https://mp.weixin.qq.com/s/Z3BWkLbwAKpyYurJW-Llcg)
 
 [FFmpeg 6.1版本已经发布](https://mp.weixin.qq.com/s/K9YkngbXe8rEnIeohf9ufw)
+
+[FFmpeg: building example C codes](https://mp.weixin.qq.com/s/GLqYlDbMTOsnj-01Slde8g)
