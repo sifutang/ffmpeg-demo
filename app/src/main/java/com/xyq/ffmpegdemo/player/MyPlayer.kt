@@ -48,7 +48,7 @@ class MyPlayer(private val mContext: Context,
         RELEASE
     }
 
-    private lateinit var mProxy: IPlayer
+    private var mProxy: IPlayer? = null
 
     private var mAudioTrack: AudioTrack? = null
     private var mVisualizer: Visualizer? = null
@@ -141,16 +141,16 @@ class MyPlayer(private val mContext: Context,
         if (isVideo) {
             prepareSurfaceIfNeed(config)
         }
-        mProxy.prepare(path, mSurface)
+        mProxy!!.prepare(path, mSurface)
 
         mState = State.PREPARE
         mPath = path
         mIsPlayComplete = false
         mDuration = getDuration()
-        mVideoRotate = mProxy.getRotate()
+        mVideoRotate = mProxy!!.getRotate()
         mRenderManager.setVideoRotate(mVideoRotate)
         Log.i(TAG, "prepare: done, duration: $mDuration, rotate: $mVideoRotate, consume: ${System.currentTimeMillis() - start}")
-        val mediaInfo = MediaInfo(mProxy.getMediaInfo())
+        val mediaInfo = MediaInfo(mProxy!!.getMediaInfo())
         Log.i(TAG, "prepare done, media info: $mediaInfo")
     }
 
@@ -165,8 +165,8 @@ class MyPlayer(private val mContext: Context,
             ImagePlayer()
         }
 
-        mProxy.init()
-        mProxy.setPlayerListener(this)
+        mProxy!!.init()
+        mProxy!!.setPlayerListener(this)
     }
 
     private fun prepareSurfaceIfNeed(config: PlayerConfig) {
@@ -200,7 +200,7 @@ class MyPlayer(private val mContext: Context,
         }
 
         if (mDuration < 0) {
-            mDuration = mProxy.getDuration()
+            mDuration = mProxy!!.getDuration()
         }
         return mDuration
     }
@@ -218,7 +218,7 @@ class MyPlayer(private val mContext: Context,
         }
 
         mIsPlayComplete = false
-        return mProxy.seek(position)
+        return mProxy!!.seek(position)
     }
 
     override fun setMute(mute: Boolean) {
@@ -226,17 +226,17 @@ class MyPlayer(private val mContext: Context,
             return
         }
 
-        mProxy.setMute(mute)
+        mProxy!!.setMute(mute)
     }
 
     override fun start() {
-        mProxy.start()
+        mProxy!!.start()
         mState = State.START
     }
 
     override fun resume() {
         if (mState == State.PAUSE) {
-            mProxy.resume()
+            mProxy!!.resume()
             mState = State.RESUME
         } else {
             Log.e(TAG, "resume: failed, state: $mState")
@@ -247,7 +247,7 @@ class MyPlayer(private val mContext: Context,
 
     override fun pause() {
         if (mState == State.START || mState == State.RESUME) {
-            mProxy.pause()
+            mProxy!!.pause()
             mState = State.PAUSE
         } else {
             Log.e(TAG, "pause: failed, state: $mState")
@@ -277,8 +277,8 @@ class MyPlayer(private val mContext: Context,
         audioTrack?.stop()
         audioTrack?.release()
 
-        mProxy.stop()
-        mProxy.release()
+        mProxy?.stop()
+        mProxy?.release()
         mRenderManager.makeCurrent(null)
     }
 
