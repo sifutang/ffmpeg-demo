@@ -31,7 +31,7 @@ object FileUtils {
         if (!file.exists() || file.length().toInt() == 0) {
             val fos = FileOutputStream(file)
             var len: Int
-            val buffer = ByteArray(1024)
+            val buffer = ByteArray(4096)
 
             do {
                 len = inputStream.read(buffer)
