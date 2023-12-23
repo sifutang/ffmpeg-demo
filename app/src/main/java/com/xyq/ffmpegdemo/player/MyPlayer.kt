@@ -13,8 +13,10 @@ import com.xyq.ffmpegdemo.entity.MediaInfo
 import com.xyq.libbase.player.IPlayer
 import com.xyq.libbase.player.IPlayerListener
 import com.xyq.libffplayer.FFPlayer
+import com.xyq.libffplayer.utils.FFMpegUtils
 import com.xyq.libhwplayer.HwPlayer
 import com.xyq.libhwplayer.ImagePlayer
+import com.xyq.libhwplayer.reader.ImageInfo
 import com.xyq.librender.RenderManager
 import com.xyq.librender.core.OesDrawer
 import com.xyq.librender.filter.GreyFilter
@@ -162,7 +164,28 @@ class MyPlayer(private val mContext: Context,
                 HwPlayer()
             }
         } else {
-            ImagePlayer()
+            val proxy = ImagePlayer()
+            proxy.setExtraLoader(object: ImagePlayer.ImageLoader {
+                override fun load(path: String): ImageInfo {
+                    val imageInfo = ImageInfo()
+                    FFMpegUtils.getVideoFrames(path, 0, 0, false, object : FFMpegUtils.VideoFrameArrivedInterface {
+                        override fun onFetchStart(duration: Double): DoubleArray {
+                            return DoubleArray(0) {0.0}
+                        }
+
+                        override fun onProgress(frame: ByteBuffer, timestamps: Double, width: Int, height: Int, rotate: Int, index: Int): Boolean {
+                            imageInfo.width = width
+                            imageInfo.height = height
+                            imageInfo.data = frame
+                            imageInfo.rotate = rotate
+                            return true
+                        }
+                        override fun onFetchEnd() {}
+                    })
+                    return imageInfo
+                }
+            })
+            proxy
         }
 
         mProxy!!.init()

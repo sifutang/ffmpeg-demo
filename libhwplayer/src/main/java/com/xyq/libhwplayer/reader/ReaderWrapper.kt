@@ -3,7 +3,6 @@ package com.xyq.libhwplayer.reader
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.ColorSpace
-import android.os.Build
 import android.util.Log
 import com.xyq.libhwplayer.utils.MimeTypeHelper
 import com.xyq.libjpeg.JpegReader
@@ -13,78 +12,79 @@ import java.nio.ByteBuffer
 
 class ReaderWrapper {
 
-    inner class BufferData {
-        var width = 0
-        var height = 0
-        var rotate = 0
-        var data: ByteBuffer? = null
-
-        fun isValid(): Boolean {
-            return width > 0 && height > 0 && data != null
-        }
-    }
-
     companion object {
         private const val TAG = "ReaderWrapper"
     }
 
-    fun load(path: String): BufferData? {
+    fun load(path: String): ImageInfo? {
+        var imageInfo = decodeByHW(path)
+
+        if (imageInfo == null) {
+            imageInfo = decodeBySW(path)
+        }
+
+        return imageInfo
+    }
+
+    private fun decodeByHW(path: String): ImageInfo? {
         val options = BitmapFactory.Options()
         options.inPreferredConfig = Bitmap.Config.ARGB_8888
         getColorSpace(path)?.let {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && it != ColorSpace.get(ColorSpace.Named.SRGB)) {
+            if (it != ColorSpace.get(ColorSpace.Named.SRGB)) {
                 options.inPreferredColorSpace = ColorSpace.get(ColorSpace.Named.SRGB)
                 Log.i(TAG, "prepare: inPreferredColorSpace s-rgb, origin color space: ${it.name}")
             }
         }
 
-        val bufferData = BufferData()
+        var imageInfo: ImageInfo? = null
         val bitmap = BitmapFactory.decodeFile(path, options)
         if (bitmap != null) {
-            bufferData.width = bitmap.width
-            bufferData.height = bitmap.height
-            bufferData.rotate = FileUtils.getImageOrientation(path)
-            bufferData.data = bitmapToByteBuffer(bitmap)
+            imageInfo = ImageInfo()
+            imageInfo.width = bitmap.width
+            imageInfo.height = bitmap.height
+            imageInfo.rotate = FileUtils.getImageOrientation(path)
+            imageInfo.data = bitmapToByteBuffer(bitmap)
             bitmap.recycle()
-            return bufferData
         } else {
             Log.e(TAG, "load: System decodeFile failed")
         }
+        return imageInfo
+    }
 
+    private fun decodeBySW(path: String): ImageInfo? {
+        var imageInfo: ImageInfo? = null
         val mimeType = MimeTypeHelper.getFileMimeType(path)
         if (mimeType == MimeTypeHelper.MimeType.JPEG) {
             val data = JpegReader().load(path)
             if (data.isValid()) {
-                bufferData.width = data.width
-                bufferData.height = data.height
-                bufferData.data = data.buffer
-                bufferData.rotate = data.rotate
+                imageInfo = ImageInfo()
+                imageInfo.width = data.width
+                imageInfo.height = data.height
+                imageInfo.data = data.buffer
+                imageInfo.rotate = data.rotate
             } else {
                 Log.e(TAG, "prepare: use JpegReader decode failed")
             }
         } else if (mimeType == MimeTypeHelper.MimeType.PNG) {
             val data = PngReader().load(path)
             if (data.isValid()) {
-                bufferData.width = data.width
-                bufferData.height = data.height
-                bufferData.rotate = data.rotate
-                bufferData.data = data.buffer
+                imageInfo = ImageInfo()
+                imageInfo.width = data.width
+                imageInfo.height = data.height
+                imageInfo.rotate = data.rotate
+                imageInfo.data = data.buffer
             } else {
                 Log.e(TAG, "prepare: use PngReader decode failed")
             }
         }
-        return if (bufferData.isValid()) bufferData else null
+        return imageInfo
     }
 
     private fun getColorSpace(path: String): ColorSpace? {
-        var colorSpace: ColorSpace? = null
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val options = BitmapFactory.Options()
-            options.inJustDecodeBounds = true
-            BitmapFactory.decodeFile(path, options)
-            colorSpace = options.outColorSpace
-        }
-        return colorSpace
+        val options = BitmapFactory.Options()
+        options.inJustDecodeBounds = true
+        BitmapFactory.decodeFile(path, options)
+        return options.outColorSpace
     }
 
     private fun bitmapToByteBuffer(bitmap: Bitmap): ByteBuffer {

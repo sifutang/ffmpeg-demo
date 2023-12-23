@@ -4,6 +4,7 @@ import android.util.Log
 import android.view.Surface
 import com.xyq.libbase.player.IPlayer
 import com.xyq.libbase.player.IPlayerListener
+import com.xyq.libhwplayer.reader.ImageInfo
 import com.xyq.libhwplayer.reader.ReaderWrapper
 import java.nio.ByteBuffer
 
@@ -14,10 +15,19 @@ class ImagePlayer: IPlayer {
     private var mRgbaBuffer: ByteBuffer? = null
     private var mWidth = 0
     private var mHeight = 0
+    private var mExtraLoader: ImageLoader? = null
 
     companion object {
         private const val TAG = "ImagePlayer"
         private const val FORMAT_RGBA = 0x02
+    }
+
+    interface ImageLoader {
+        fun load(path: String): ImageInfo
+    }
+
+    fun setExtraLoader(loader: ImageLoader) {
+        mExtraLoader = loader
     }
 
     override fun init() {
@@ -30,16 +40,20 @@ class ImagePlayer: IPlayer {
 
     override fun prepare(path: String, surface: Surface?) {
         val reader = ReaderWrapper()
-        val bufferData = reader.load(path)
-        if (bufferData == null) {
+        var imageInfo = reader.load(path)
+        if (imageInfo == null) {
+            Log.w(TAG, "prepare: failed, try use extra loader: ${mExtraLoader != null}")
+            imageInfo = mExtraLoader?.load(path)
+        }
+        if (imageInfo == null || !imageInfo.isValid()) {
             Log.e(TAG, "prepare: failed")
             return
         }
 
-        mWidth = bufferData.width
-        mHeight = bufferData.height
-        mRotate = bufferData.rotate
-        mRgbaBuffer = bufferData.data
+        mWidth = imageInfo.width
+        mHeight = imageInfo.height
+        mRotate = imageInfo.rotate
+        mRgbaBuffer = imageInfo.data
         mListener?.onVideoTrackPrepared(mWidth, mHeight, -1.0)
     }
 
