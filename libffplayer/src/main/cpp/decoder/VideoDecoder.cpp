@@ -51,6 +51,10 @@ bool VideoDecoder::prepare() {
             LOGE("format(%d) not support hw decode, maybe rebuild ffmpeg so", params->codec_id)
             break;
     }
+    if (useHwDecoder && (params->format != AV_PIX_FMT_YUV420P && params->format != AV_PIX_FMT_YUV420P10LE)) {
+        useHwDecoder = false;
+        LOGE("force use sw decoder for format: %s", av_get_pix_fmt_name(AVPixelFormat(params->format)))
+    }
 
     if (useHwDecoder) {
         AVHWDeviceType type = av_hwdevice_find_type_by_name("mediacodec");
@@ -139,7 +143,7 @@ bool VideoDecoder::prepare() {
     mAvFrame = av_frame_alloc();
     mStartTimeMsForSync = -1;
     mRetryReceiveCount = RETRY_RECEIVE_COUNT;
-    LOGI("codec name: %s", mVideoCodec->name)
+    LOGI("codec name: %s, format: %s", mVideoCodec->name, av_get_pix_fmt_name(AVPixelFormat(params->format)))
 
     mMediaInfoJson.clear();
     mMediaInfoJson["width"] = mWidth;
